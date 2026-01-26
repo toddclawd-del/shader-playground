@@ -1,0 +1,22 @@
+import { gradientConfig } from './gradient/config'
+import { noiseConfig } from './noise/config'
+import { bosShapesConfig } from './bos-shapes/config'
+import { bosPatternsConfig } from './bos-patterns/config'
+import { wavesConfig } from './waves/config'
+import { textureConfig } from './texture/config'
+import type { ShaderConfig } from '../stores/shaderStore'
+
+export const shaderRegistry: Record<string, ShaderConfig> = {
+  gradient: gradientConfig,
+  noise: noiseConfig,
+  'bos-shapes': bosShapesConfig,
+  'bos-patterns': bosPatternsConfig,
+  waves: wavesConfig,
+  texture: textureConfig,
+}
+
+export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
+  id,
+  name: config.name,
+  description: config.description,
+}))
