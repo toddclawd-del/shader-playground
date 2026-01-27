@@ -11,6 +11,7 @@ import { flowfieldConfig } from './flowfield/config'
 import { auroraConfig } from './aurora/config'
 import { glassConfig } from './glass/config'
 import { holographicConfig } from './holographic/config'
+import { voronoiConfig } from './voronoi/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -27,6 +28,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   aurora: auroraConfig,
   glass: glassConfig,
   holographic: holographicConfig,
+  voronoi: voronoiConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
