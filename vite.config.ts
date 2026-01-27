@@ -4,6 +4,7 @@ import glsl from 'vite-plugin-glsl'
 
 export default defineConfig({
   plugins: [react(), glsl()],
+  base: '/shader-playground/',
   server: {
     port: 5173,
     open: true,
