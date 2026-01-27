@@ -9,7 +9,6 @@ export const holographicConfig: ShaderConfig = {
   fragmentShader,
   uniforms: {
     uTime: { value: 0, type: 'float' },
-    uMouse: { value: [0.5, 0.5], type: 'vec2' },
     
     // Fresnel (view-angle effect)
     uFresnelPower: { value: 2.0, min: 0.5, max: 5, step: 0.1, type: 'float', label: 'Fresnel Power' },

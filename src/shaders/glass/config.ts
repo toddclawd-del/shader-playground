@@ -9,7 +9,6 @@ export const glassConfig: ShaderConfig = {
   fragmentShader,
   uniforms: {
     uTime: { value: 0, type: 'float' },
-    uMouse: { value: [0.5, 0.5], type: 'vec2' },
     
     // Core glass properties
     uBlur: { value: 2.0, min: 0, max: 10, step: 0.1, type: 'float', label: 'Blur' },
