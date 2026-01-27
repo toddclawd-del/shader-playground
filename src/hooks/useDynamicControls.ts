@@ -3,6 +3,7 @@ import { useControls, button, folder } from 'leva'
 import * as THREE from 'three'
 import { useShaderStore } from '../stores/shaderStore'
 import { shaderRegistry, shaderList } from '../shaders'
+import { usePresets } from './usePresets'
 
 export function useDynamicControls() {
   const {
@@ -14,9 +15,19 @@ export function useDynamicControls() {
     setTexture,
     resetUniforms,
   } = useShaderStore()
-  
+
   const config = shaderRegistry[currentShaderId]
-  
+
+  const {
+    presets,
+    savePreset,
+    removePreset,
+    applyPreset,
+    copyShaderCode,
+    downloadShader,
+    downloadConfig,
+  } = usePresets()
+
   // Track if we're updating from Leva to prevent loops
   const isUpdatingRef = useRef(false)
   
@@ -123,15 +134,76 @@ export function useDynamicControls() {
         setTimeout(() => { isUpdatingRef.current = false }, 0)
       }
     })
-    
+
+    // Presets folder
+    const presetControls: Record<string, any> = {
+      'Save Preset': button(() => {
+        const name = prompt('Enter preset name:')
+        if (name) {
+          savePreset(name)
+          console.log(`Saved preset: ${name}`)
+        }
+      }),
+    }
+
+    // Add buttons for each saved preset
+    presets.forEach((preset, index) => {
+      presetControls[`${index + 1}. ${preset.name}`] = button(() => {
+        applyPreset(preset.id)
+        // Update Leva controls with preset values
+        isUpdatingRef.current = true
+        const levaValues: Record<string, any> = {}
+        Object.entries(preset.uniformValues).forEach(([key, value]) => {
+          if (key === 'uTime') return
+          const uniformConfig = config?.uniforms[key]
+          const label = uniformConfig?.label || key.replace('u', '')
+          levaValues[label] = uniformConfig?.type === 'bool' ? Boolean(value) : value
+        })
+        setShaderControls(levaValues)
+        setTimeout(() => { isUpdatingRef.current = false }, 0)
+        console.log(`Loaded preset: ${preset.name}`)
+      })
+    })
+
+    if (presets.length > 0) {
+      presetControls['Delete Last'] = button(() => {
+        const lastPreset = presets[presets.length - 1]
+        if (lastPreset && confirm(`Delete preset "${lastPreset.name}"?`)) {
+          removePreset(lastPreset.id)
+        }
+      })
+    }
+
+    controls['Presets'] = folder(presetControls, { collapsed: true })
+
+    // Export folder
+    controls['Export'] = folder({
+      'Copy GLSL': button(() => {
+        copyShaderCode().then((success) => {
+          if (success) {
+            console.log('Shader code copied to clipboard!')
+          }
+        })
+      }),
+      'Download Shader': button(() => {
+        downloadShader()
+      }),
+      'Download Config': button(() => {
+        downloadConfig()
+      }),
+    }, { collapsed: true })
+
     return controls
   }
-  
-  // Shader-specific controls - key forces rebuild on shader change
+
+  // Count presets to trigger rebuild when they change
+  const presetCount = presets.length
+
+  // Shader-specific controls - key forces rebuild on shader change or preset change
   const [, setShaderControls] = useControls(
     config?.name || 'Shader',
     buildShaderControls,
     { collapsed: false },
-    [currentShaderId]
+    [currentShaderId, presetCount]
   )
 }
