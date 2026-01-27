@@ -22,7 +22,7 @@ float box(vec2 uv, vec2 size) {
   return bl.x * bl.y * tr.x * tr.y;
 }
 
-float cross(vec2 uv, float size) {
+float crossShape(vec2 uv, float size) {
   return box(uv, vec2(size, size / 4.0)) +
          box(uv, vec2(size / 4.0, size));
 }
@@ -45,7 +45,7 @@ void main() {
   gridUv = gridUv + 0.5;
   
   // Draw pattern
-  float pattern = cross(gridUv, 0.4);
+  float pattern = crossShape(gridUv, 0.4);
   
   vec3 color = mix(uColor1, uColor2, pattern);
   
