@@ -9,6 +9,8 @@ import { raymarchingConfig } from './raymarching/config'
 import { rippleConfig } from './ripple/config'
 import { flowfieldConfig } from './flowfield/config'
 import { auroraConfig } from './aurora/config'
+import { glassConfig } from './glass/config'
+import { holographicConfig } from './holographic/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -23,6 +25,8 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   ripple: rippleConfig,
   flowfield: flowfieldConfig,
   aurora: auroraConfig,
+  glass: glassConfig,
+  holographic: holographicConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
