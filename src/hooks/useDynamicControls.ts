@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useControls, button } from 'leva'
+import { useEffect, useRef } from 'react'
+import { useControls, button, folder } from 'leva'
 import * as THREE from 'three'
 import { useShaderStore } from '../stores/shaderStore'
 import { shaderRegistry, shaderList } from '../shaders'
@@ -10,7 +10,6 @@ export function useDynamicControls() {
     setCurrentShader,
     geometryType,
     setGeometryType,
-    uniformValues,
     setUniformValue,
     setTexture,
     resetUniforms,
@@ -18,8 +17,11 @@ export function useDynamicControls() {
   
   const config = shaderRegistry[currentShaderId]
   
-  // Main controls (shader selector, geometry)
-  useControls('Scene', {
+  // Track if we're updating from Leva to prevent loops
+  const isUpdatingRef = useRef(false)
+  
+  // Scene controls - these are stable
+  const [, setScene] = useControls('Scene', () => ({
     shader: {
       value: currentShaderId || 'gradient',
       options: Object.fromEntries(shaderList.map((s) => [s.name, s.id])),
@@ -40,24 +42,32 @@ export function useDynamicControls() {
       },
       onChange: (value) => setGeometryType(value),
     },
-  }, [currentShaderId, geometryType])
+  }), [])
   
-  // Build shader-specific controls
-  const shaderControls = useMemo(() => {
-    if (!config) return {}
+  // Update scene controls when store changes
+  useEffect(() => {
+    setScene({ shader: currentShaderId, geometry: geometryType })
+  }, [currentShaderId, geometryType, setScene])
+  
+  // Build shader controls config - only rebuild when shader changes
+  const buildShaderControls = () => {
+    if (!config) return { placeholder: { value: 'No shader loaded' } }
     
     const controls: Record<string, any> = {}
     
     Object.entries(config.uniforms).forEach(([key, uniform]) => {
-      // Skip uTime - it's auto-animated
-      if (key === 'uTime') return
+      if (key === 'uTime') return // Skip auto-animated
       
       const label = uniform.label || key.replace('u', '')
       
       if (uniform.type === 'color') {
         controls[label] = {
-          value: uniformValues[key] || uniform.value,
-          onChange: (value: string) => setUniformValue(key, value),
+          value: uniform.value as string,
+          onChange: (value: string) => {
+            if (!isUpdatingRef.current) {
+              setUniformValue(key, value)
+            }
+          },
         }
       } else if (uniform.type === 'texture') {
         controls[label] = {
@@ -68,49 +78,60 @@ export function useDynamicControls() {
               loader.load(file, (texture) => {
                 texture.needsUpdate = true
                 setTexture(key, texture)
-                setUniformValue(key, texture)
               })
             } else {
               setTexture(key, null)
-              setUniformValue(key, null)
             }
           },
         }
       } else if (uniform.type === 'bool' || (uniform.min === 0 && uniform.max === 1 && uniform.step === 1)) {
         controls[label] = {
-          value: Boolean(uniformValues[key] ?? uniform.value),
-          onChange: (value: boolean) => setUniformValue(key, value ? 1 : 0),
-        }
-      } else if (uniform.type === 'vec2') {
-        controls[label] = {
-          value: uniformValues[key] || uniform.value,
-          onChange: (value: number[]) => setUniformValue(key, value),
+          value: Boolean(uniform.value),
+          onChange: (value: boolean) => {
+            if (!isUpdatingRef.current) {
+              setUniformValue(key, value ? 1 : 0)
+            }
+          },
         }
       } else {
-        // Float/number
         controls[label] = {
-          value: uniformValues[key] ?? uniform.value,
+          value: uniform.value as number,
           min: uniform.min,
           max: uniform.max,
           step: uniform.step,
-          onChange: (value: number) => setUniformValue(key, value),
+          onChange: (value: number) => {
+            if (!isUpdatingRef.current) {
+              setUniformValue(key, value)
+            }
+          },
         }
       }
     })
     
-    // Add reset button
     controls['Reset'] = button(() => {
-      if (config) resetUniforms(config)
+      if (config) {
+        isUpdatingRef.current = true
+        resetUniforms(config)
+        // Reset Leva values
+        const defaults: Record<string, any> = {}
+        Object.entries(config.uniforms).forEach(([key, uniform]) => {
+          if (key === 'uTime') return
+          const label = uniform.label || key.replace('u', '')
+          defaults[label] = uniform.type === 'bool' ? Boolean(uniform.value) : uniform.value
+        })
+        setShaderControls(defaults)
+        setTimeout(() => { isUpdatingRef.current = false }, 0)
+      }
     })
     
     return controls
-  }, [config, uniformValues, currentShaderId, setUniformValue, setTexture, resetUniforms])
+  }
   
-  // Shader-specific controls panel
-  useControls(
+  // Shader-specific controls - key forces rebuild on shader change
+  const [, setShaderControls] = useControls(
     config?.name || 'Shader',
-    shaderControls,
+    buildShaderControls,
     { collapsed: false },
-    [config, shaderControls, currentShaderId]
+    [currentShaderId]
   )
 }
