@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { useControls, folder, button } from 'leva'
+import { useMemo } from 'react'
+import { useControls, button } from 'leva'
 import * as THREE from 'three'
 import { useShaderStore } from '../stores/shaderStore'
 import { shaderRegistry, shaderList } from '../shaders'
@@ -21,9 +21,14 @@ export function useDynamicControls() {
   // Main controls (shader selector, geometry)
   useControls('Scene', {
     shader: {
-      value: currentShaderId,
+      value: currentShaderId || 'gradient',
       options: Object.fromEntries(shaderList.map((s) => [s.name, s.id])),
-      onChange: (value) => setCurrentShader(value),
+      onChange: (value: string) => {
+        const newConfig = shaderRegistry[value]
+        if (newConfig) {
+          setCurrentShader(value, newConfig)
+        }
+      },
     },
     geometry: {
       value: geometryType,
@@ -94,10 +99,12 @@ export function useDynamicControls() {
     })
     
     // Add reset button
-    controls['Reset'] = button(() => resetUniforms())
+    controls['Reset'] = button(() => {
+      if (config) resetUniforms(config)
+    })
     
     return controls
-  }, [config, uniformValues, currentShaderId])
+  }, [config, uniformValues, currentShaderId, setUniformValue, setTexture, resetUniforms])
   
   // Shader-specific controls panel
   useControls(

@@ -23,7 +23,6 @@ export type GeometryType = 'plane' | 'sphere' | 'torus' | 'box'
 interface ShaderState {
   // Current shader
   currentShaderId: string
-  shaderRegistry: Record<string, ShaderConfig>
   
   // Geometry
   geometryType: GeometryType
@@ -35,37 +34,26 @@ interface ShaderState {
   textures: Record<string, THREE.Texture | null>
   
   // Actions
-  setCurrentShader: (id: string) => void
-  registerShader: (id: string, config: ShaderConfig) => void
+  setCurrentShader: (id: string, config: ShaderConfig) => void
   setGeometryType: (type: GeometryType) => void
   setUniformValue: (name: string, value: any) => void
   setTexture: (name: string, texture: THREE.Texture | null) => void
-  resetUniforms: () => void
+  resetUniforms: (config: ShaderConfig) => void
 }
 
-export const useShaderStore = create<ShaderState>((set, get) => ({
+export const useShaderStore = create<ShaderState>((set) => ({
   currentShaderId: '',
-  shaderRegistry: {},
   geometryType: 'plane',
   uniformValues: {},
   textures: {},
   
-  setCurrentShader: (id) => {
-    const config = get().shaderRegistry[id]
-    if (config) {
-      // Reset uniform values to defaults when switching shaders
-      const defaults: Record<string, any> = {}
-      Object.entries(config.uniforms).forEach(([key, uniform]) => {
-        defaults[key] = uniform.value
-      })
-      set({ currentShaderId: id, uniformValues: defaults })
-    }
-  },
-  
-  registerShader: (id, config) => {
-    set((state) => ({
-      shaderRegistry: { ...state.shaderRegistry, [id]: config },
-    }))
+  setCurrentShader: (id, config) => {
+    // Reset uniform values to defaults when switching shaders
+    const defaults: Record<string, any> = {}
+    Object.entries(config.uniforms).forEach(([key, uniform]) => {
+      defaults[key] = uniform.value
+    })
+    set({ currentShaderId: id, uniformValues: defaults })
   },
   
   setGeometryType: (type) => set({ geometryType: type }),
@@ -82,15 +70,11 @@ export const useShaderStore = create<ShaderState>((set, get) => ({
     }))
   },
   
-  resetUniforms: () => {
-    const { currentShaderId, shaderRegistry } = get()
-    const config = shaderRegistry[currentShaderId]
-    if (config) {
-      const defaults: Record<string, any> = {}
-      Object.entries(config.uniforms).forEach(([key, uniform]) => {
-        defaults[key] = uniform.value
-      })
-      set({ uniformValues: defaults })
-    }
+  resetUniforms: (config) => {
+    const defaults: Record<string, any> = {}
+    Object.entries(config.uniforms).forEach(([key, uniform]) => {
+      defaults[key] = uniform.value
+    })
+    set({ uniformValues: defaults })
   },
 }))

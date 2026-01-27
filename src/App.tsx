@@ -12,15 +12,18 @@ function Controls() {
 }
 
 function App() {
-  const { setCurrentShader } = useShaderStore()
+  const { currentShaderId, setCurrentShader } = useShaderStore()
   
   // Initialize with first shader
   useEffect(() => {
-    const firstShaderId = Object.keys(shaderRegistry)[0]
-    if (firstShaderId) {
-      setCurrentShader(firstShaderId)
+    if (!currentShaderId) {
+      const firstShaderId = Object.keys(shaderRegistry)[0]
+      const firstConfig = shaderRegistry[firstShaderId]
+      if (firstShaderId && firstConfig) {
+        setCurrentShader(firstShaderId, firstConfig)
+      }
     }
-  }, [setCurrentShader])
+  }, [currentShaderId, setCurrentShader])
   
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
