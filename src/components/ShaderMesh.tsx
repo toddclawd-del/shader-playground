@@ -85,14 +85,14 @@ export function ShaderMesh() {
   const renderGeometry = () => {
     switch (geometryType) {
       case 'sphere':
-        return <sphereGeometry args={[1.5, 64, 64]} />
+        return <sphereGeometry args={[1.5, 256, 256]} />
       case 'torus':
-        return <torusGeometry args={[1, 0.4, 32, 100]} />
+        return <torusGeometry args={[1, 0.4, 128, 256]} />
       case 'box':
-        return <boxGeometry args={[2, 2, 2, 32, 32, 32]} />
+        return <boxGeometry args={[2, 2, 2, 128, 128, 128]} />
       case 'plane':
       default:
-        return <planeGeometry args={[3, 3, 64, 64]} />
+        return <planeGeometry args={[3, 3, 256, 256]} />
     }
   }
   
