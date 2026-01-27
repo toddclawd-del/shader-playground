@@ -30,6 +30,8 @@ export const glassConfig: ShaderConfig = {
     uEdgeColor: { value: '#4fc3f7', type: 'color', label: 'Edge Color' },
     
     // Color adjustments
+    uColor1: { value: '#1a1a2e', type: 'color', label: 'BG Color 1' },
+    uColor2: { value: '#2d3a4a', type: 'color', label: 'BG Color 2' },
     uTint: { value: '#ffffff', type: 'color', label: 'Tint' },
     uTintStrength: { value: 0, min: 0, max: 1, step: 0.05, type: 'float', label: 'Tint Strength' },
     uOpacity: { value: 0.9, min: 0, max: 1, step: 0.05, type: 'float', label: 'Opacity' },

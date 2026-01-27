@@ -1,7 +1,6 @@
 varying vec2 vUv;
 
 uniform float uTime;
-uniform vec2 uMouse;
 uniform float uBlur;
 uniform float uRefraction;
 uniform float uChromaticAberration;
@@ -14,9 +13,11 @@ uniform float uReflection;
 uniform float uDistortSpeed;
 uniform float uEdgeGlow;
 uniform vec3 uEdgeColor;
+uniform vec3 uColor1;
+uniform vec3 uColor2;
 
 // ============================================
-// Noise for frost effect
+// Fast noise (no loops)
 // ============================================
 
 float hash(vec2 p) {
@@ -28,65 +29,40 @@ float noise(vec2 p) {
     vec2 f = fract(p);
     f = f * f * (3.0 - 2.0 * f);
     
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    return mix(
+        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+        f.y
+    );
 }
 
-float fbm(vec2 p, int octaves) {
-    float value = 0.0;
-    float amplitude = 0.5;
-    float frequency = 1.0;
-    
-    for (int i = 0; i < 6; i++) {
-        if (i >= octaves) break;
-        value += amplitude * noise(p * frequency);
-        frequency *= 2.0;
-        amplitude *= 0.5;
-    }
-    
-    return value;
+// Simplified FBM - only 3 octaves, unrolled
+float fbm3(vec2 p) {
+    float v = 0.0;
+    v += 0.5 * noise(p); p *= 2.0;
+    v += 0.25 * noise(p); p *= 2.0;
+    v += 0.125 * noise(p);
+    return v;
 }
 
 // ============================================
-// Blur simulation (box blur approximation)
+// Background generation (no blur loops)
 // ============================================
 
-vec3 sampleBlurred(vec2 uv, float blur) {
-    vec3 color = vec3(0.0);
-    float total = 0.0;
+vec3 generateBackground(vec2 uv, float time) {
+    // Simple animated gradient background
+    float n = fbm3(uv * 3.0 + time * 0.1);
     
-    // Sample in a pattern around the point
-    for (float x = -2.0; x <= 2.0; x += 1.0) {
-        for (float y = -2.0; y <= 2.0; y += 1.0) {
-            vec2 offset = vec2(x, y) * blur * 0.01;
-            
-            // Create a fake "background" using gradients and noise
-            vec2 sampleUv = uv + offset;
-            float n = fbm(sampleUv * 3.0 + uTime * 0.1, 4);
-            vec3 bg = mix(
-                vec3(0.1, 0.1, 0.15),
-                vec3(0.2, 0.25, 0.3),
-                n
-            );
-            
-            // Add some color variation
-            bg += vec3(
-                sin(sampleUv.x * 10.0 + uTime) * 0.05,
-                cos(sampleUv.y * 8.0 + uTime * 0.7) * 0.05,
-                sin((sampleUv.x + sampleUv.y) * 6.0) * 0.05
-            );
-            
-            float weight = 1.0 - length(vec2(x, y)) / 3.0;
-            color += bg * weight;
-            total += weight;
-        }
-    }
+    vec3 bg = mix(uColor1, uColor2, n);
     
-    return color / total;
+    // Add subtle movement
+    bg += vec3(
+        sin(uv.x * 10.0 + time) * 0.03,
+        cos(uv.y * 8.0 + time * 0.7) * 0.03,
+        sin((uv.x + uv.y) * 6.0 + time * 0.5) * 0.03
+    );
+    
+    return bg;
 }
 
 // ============================================
@@ -96,69 +72,69 @@ vec3 sampleBlurred(vec2 uv, float blur) {
 void main() {
     vec2 uv = vUv;
     vec2 centeredUv = uv - 0.5;
+    float time = uTime;
     
-    // ---- Frost distortion ----
-    float frostNoise = 0.0;
+    // ---- Frost distortion (simplified) ----
+    vec2 distortedUv = uv;
     if (uFrost > 0.0) {
-        frostNoise = fbm(uv * uFrostScale + uTime * uDistortSpeed * 0.2, 4);
-        frostNoise = (frostNoise - 0.5) * 2.0 * uFrost * 0.1;
+        float frostNoise = fbm3(uv * uFrostScale + time * uDistortSpeed * 0.2);
+        distortedUv += (frostNoise - 0.5) * uFrost * 0.15;
     }
     
     // ---- Refraction distortion ----
-    vec2 refractOffset = vec2(0.0);
     if (uRefraction > 0.0) {
-        // Lens-like refraction from center
         float dist = length(centeredUv);
-        vec2 dir = normalize(centeredUv + 0.001);
-        float refractAmount = pow(dist, 2.0) * uRefraction * 0.5;
-        refractOffset = dir * refractAmount;
+        vec2 dir = centeredUv / (dist + 0.001);
+        float refractAmount = dist * dist * uRefraction * 0.5;
+        distortedUv += dir * refractAmount;
         
-        // Add animated wave distortion
-        refractOffset += vec2(
-            sin(uv.y * 20.0 + uTime * uDistortSpeed) * 0.01,
-            cos(uv.x * 20.0 + uTime * uDistortSpeed) * 0.01
-        ) * uRefraction;
+        // Animated wave
+        distortedUv += vec2(
+            sin(uv.y * 20.0 + time * uDistortSpeed),
+            cos(uv.x * 20.0 + time * uDistortSpeed)
+        ) * 0.01 * uRefraction;
     }
     
-    // Combined distortion
-    vec2 distortedUv = uv + refractOffset + frostNoise;
+    // ---- Simple blur via UV jitter (no loops) ----
+    vec2 blurOffset = vec2(
+        noise(distortedUv * 50.0 + time),
+        noise(distortedUv * 50.0 + time + 100.0)
+    ) - 0.5;
+    vec2 blurredUv = distortedUv + blurOffset * uBlur * 0.02;
     
-    // ---- Chromatic aberration ----
+    // ---- Generate color ----
     vec3 color;
     if (uChromaticAberration > 0.0) {
-        float caAmount = uChromaticAberration * 0.02;
-        vec2 caDir = normalize(centeredUv + 0.001);
+        float caAmount = uChromaticAberration * 0.015;
+        vec2 caDir = centeredUv / (length(centeredUv) + 0.001);
         
-        vec3 colorR = sampleBlurred(distortedUv + caDir * caAmount, uBlur);
-        vec3 colorG = sampleBlurred(distortedUv, uBlur);
-        vec3 colorB = sampleBlurred(distortedUv - caDir * caAmount, uBlur);
+        vec3 colorR = generateBackground(blurredUv + caDir * caAmount, time);
+        vec3 colorG = generateBackground(blurredUv, time);
+        vec3 colorB = generateBackground(blurredUv - caDir * caAmount, time);
         
         color = vec3(colorR.r, colorG.g, colorB.b);
     } else {
-        color = sampleBlurred(distortedUv, uBlur);
+        color = generateBackground(blurredUv, time);
     }
     
     // ---- Frost overlay ----
     if (uFrost > 0.0) {
-        float frost = fbm(uv * uFrostScale * 2.0, 5);
-        frost = pow(frost, 1.5);
-        color = mix(color, vec3(0.9, 0.95, 1.0), frost * uFrost * 0.3);
+        float frost = fbm3(uv * uFrostScale * 2.0);
+        frost = frost * frost;
+        color = mix(color, vec3(0.95), frost * uFrost * 0.4);
     }
     
-    // ---- Reflection (fake specular) ----
+    // ---- Reflection (simplified) ----
     if (uReflection > 0.0) {
-        vec2 reflectUv = uv;
-        reflectUv.y = 1.0 - reflectUv.y;
+        float fresnel = length(centeredUv) * 2.0;
+        fresnel = fresnel * fresnel;
+        fresnel = min(fresnel, 1.0);
         
-        float reflection = fbm(reflectUv * 5.0 + uTime * 0.1, 3);
-        reflection = pow(reflection, 3.0);
-        
-        // Fresnel-like edge reflection
-        float fresnel = pow(length(centeredUv) * 1.5, 2.0);
-        fresnel = clamp(fresnel, 0.0, 1.0);
+        float reflection = noise(uv * 5.0 + time * 0.3);
+        reflection = reflection * reflection * reflection;
         
         color += vec3(1.0) * reflection * uReflection * 0.3;
-        color += vec3(0.8, 0.9, 1.0) * fresnel * uReflection * 0.2;
+        color += vec3(0.85, 0.9, 1.0) * fresnel * uReflection * 0.25;
     }
     
     // ---- Edge glow ----
@@ -171,12 +147,9 @@ void main() {
     // ---- Tint ----
     color = mix(color, color * uTint, uTintStrength);
     
-    // ---- Final opacity ----
+    // ---- Opacity with inner glow ----
     float alpha = uOpacity;
-    
-    // Add subtle inner glow
-    float innerGlow = 1.0 - length(centeredUv) * 1.5;
-    innerGlow = max(0.0, innerGlow);
+    float innerGlow = max(0.0, 1.0 - length(centeredUv) * 1.5);
     alpha += innerGlow * 0.1;
     
     gl_FragColor = vec4(color, alpha);
