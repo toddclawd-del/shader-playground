@@ -13,6 +13,7 @@ import { glassConfig } from './glass/config'
 import { holographicConfig } from './holographic/config'
 import { voronoiConfig } from './voronoi/config'
 import { domainWarpConfig } from './domain-warp/config'
+import { juliaSetConfig } from './julia-set/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -31,6 +32,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   holographic: holographicConfig,
   voronoi: voronoiConfig,
   'domain-warp': domainWarpConfig,
+  'julia-set': juliaSetConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({

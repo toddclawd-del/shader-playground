@@ -111,3 +111,152 @@ This creates the flowing color bands characteristic of IQ's work.
 - Exposed intermediate q/r for color mapping (IQ technique)
 - Added edge vignette for polish
 - Time offsets vary per layer for complex animation
+
+---
+
+## Julia Set Fractals (Added 2026-01-29)
+
+### What It Does
+
+Julia sets visualize the boundary between "escaping" and "bounded" points under iteration of the complex function f(z) = z² + c. They're the OG shader flex — mathematically elegant, visually infinite, and a perfect intro to complex number arithmetic in GLSL.
+
+### The Core Technique
+
+```glsl
+// Complex number squared: z² = (a + bi)² = (a² - b²) + 2abi
+vec2 complexSquare(vec2 z) {
+    return vec2(
+        z.x * z.x - z.y * z.y,  // real: a² - b²
+        2.0 * z.x * z.y         // imaginary: 2ab
+    );
+}
+
+// Escape time algorithm
+int iterations = 0;
+for (int i = 0; i < maxIterations; i++) {
+    if (length(z) > 2.0) break;  // Escaped!
+    z = complexSquare(z) + c;     // The magic formula
+    iterations++;
+}
+```
+
+### Why It Looks Cool
+
+**Self-similarity at infinite scales.** Zoom in forever and you keep finding similar structures. This is the mathematical definition of a fractal.
+
+The boundary between "escapes to infinity" and "stays bounded" is infinitely complex — no matter how close you look, there's always more detail.
+
+### Key Math Concepts
+
+1. **Complex Numbers as vec2**
+   - Real part → x component
+   - Imaginary part → y component
+   - Complex plane = 2D coordinate system
+   
+2. **Complex Multiplication**
+   ```
+   (a + bi)(c + di) = (ac - bd) + (ad + bc)i
+   ```
+   In GLSL: `vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x)`
+
+3. **Escape Radius**
+   - If |z| > 2, it's guaranteed to escape to infinity
+   - We check |z|² > 4 (faster than sqrt)
+   
+4. **Julia vs Mandelbrot**
+   - **Mandelbrot:** c varies per pixel, z₀ = 0
+   - **Julia:** c is constant, z₀ varies per pixel
+   - Each point in Mandelbrot corresponds to a unique Julia set!
+
+5. **Smooth Coloring (Anti-aliasing)**
+   ```glsl
+   // Instead of integer iteration count, get fractional:
+   float log_zn = log(dot(z, z)) / 2.0;  // log|z|
+   float nu = log(log_zn / log(2.0)) / log(2.0);
+   float smoothIter = float(iterations) + 1.0 - nu;
+   ```
+   This removes the harsh banding you see with integer iteration counts.
+
+### The c Parameter: Julia Set Topology
+
+The constant c determines the Julia set's shape:
+
+| c value | Result |
+|---------|--------|
+| c inside Mandelbrot | Connected Julia set ("filled") |
+| c outside Mandelbrot | Disconnected ("Cantor dust") |
+| c on Mandelbrot boundary | Infinitely complex boundary |
+
+**Famous Julia sets:**
+- c = -0.4 + 0.6i — Classic dendrite/lightning
+- c = -0.8 + 0.156i — Spirals
+- c = -0.7269 + 0.1889i — Douady's rabbit
+- c = 0 + i — Dendrite
+- c = -1 + 0i — The "basilica"
+
+### Animation Trick
+
+Orbiting c around a circle creates smooth morphing between Julia set topologies:
+
+```glsl
+float t = uTime * speed;
+float r = 0.7885;  // Radius that passes through interesting c values
+vec2 c = vec2(r * cos(t), r * sin(t));
+```
+
+The radius 0.7885 traces along the Mandelbrot boundary, giving maximum variety.
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Max iterations | More detail at edges, but costs performance |
+| c value | Completely different fractal shape |
+| Zoom | Deeper exploration (increase iterations to match) |
+| Color cycles | More/fewer bands in the coloring |
+| Animation radius | Different paths through Julia set space |
+
+### Performance Considerations
+
+- **100 iterations:** Good for overview, 60+ FPS everywhere
+- **200-300:** Better edge detail, starts to stress mobile
+- **500+:** Beautiful but expensive, desktop only
+- The loop is the entire cost — minimize iterations for speed
+
+### Why Julia Sets Matter
+
+Beyond looking sick, Julia sets demonstrate:
+1. **Sensitive dependence on initial conditions** (chaos theory)
+2. **Self-similarity** (fractal geometry)
+3. **Complex dynamics** (how iteration creates structure)
+
+Every graphics programmer should understand them — they're a gateway to procedural generation, noise functions, and thinking about iteration.
+
+### References
+
+- **Wikipedia:** https://en.wikipedia.org/wiki/Julia_set
+- **Interactive Explorer:** https://www.shadertoy.com/view/MdX3Rr
+- **The Math:** "The Beauty of Fractals" by Peitgen & Richter
+
+---
+
+## Implementation Notes
+
+### Julia Set Shader (julia-set/)
+
+**Uniforms Added:**
+- Navigation: `uZoom`, `uCenter` (vec2)
+- Julia constant: `uC` (vec2), `uAnimateC` (bool), `uAnimSpeed`
+- Quality: `uMaxIterations` (10-500)
+- Colors: `uColorCycles`, `uColor1/2/3`, `uSaturation`, `uInteriorStyle`
+
+**Performance Notes:**
+- 100 iterations is the default (75 FPS on M1)
+- Smooth coloring eliminates banding without extra cost
+- The loop early-exits on escape, so empty areas are fast
+
+**Adaptations:**
+- Animated c orbits at r=0.7885 for maximum visual variety
+- Smooth iteration count for anti-aliased coloring
+- Three-color gradient with configurable cycles
+- Optional colored interior (based on final z position)
