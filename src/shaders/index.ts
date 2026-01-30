@@ -19,6 +19,9 @@ import { truchetTilesConfig } from './truchet-tiles/config'
 import { gradientMeshConfig } from './gradient-mesh/config'
 import { distortionConfig } from './distortion/config'
 import { chromaticAberrationConfig } from './chromatic-aberration/config'
+import { particleFieldConfig } from './particle-field/config'
+import { reactionDiffusionConfig } from './reaction-diffusion/config'
+import { fractalConfig } from './fractal/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -43,6 +46,9 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   'gradient-mesh': gradientMeshConfig,
   distortion: distortionConfig,
   'chromatic-aberration': chromaticAberrationConfig,
+  'particle-field': particleFieldConfig,
+  'reaction-diffusion': reactionDiffusionConfig,
+  fractal: fractalConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
