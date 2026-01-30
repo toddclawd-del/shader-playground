@@ -260,3 +260,172 @@ Every graphics programmer should understand them — they're a gateway to proced
 - Smooth iteration count for anti-aliased coloring
 - Three-color gradient with configurable cycles
 - Optional colored interior (based on final z position)
+
+---
+
+## Truchet Tiles (Added 2026-01-30)
+
+### What It Does
+
+Truchet tiles create **emergent complexity from simple rules**. You divide space into a grid, randomly rotate each tile, and because the tile elements connect at edges, you get continuous woven paths, mazes, and organic patterns.
+
+Named after Sébastien Truchet (1704), who studied how a single square tile with a diagonal line could create infinite variety through random rotation.
+
+### The Core Technique
+
+```glsl
+// 1. Divide space into grid cells
+vec2 cellId = floor(position * scale);
+vec2 cellUv = fract(position * scale);
+
+// 2. Deterministic random per cell (the magic)
+float hash = hash21(cellId);
+float flip = step(0.5, hash);  // 50% chance of rotation
+
+// 3. Draw tile elements based on flip state
+// For quarter-circle arcs: corners swap based on flip
+vec2 corner1 = flip > 0.5 ? vec2(0.0, 0.0) : vec2(1.0, 0.0);
+vec2 corner2 = flip > 0.5 ? vec2(1.0, 1.0) : vec2(0.0, 1.0);
+
+// 4. Render arcs from corners with radius 0.5
+float d1 = abs(length(cellUv - corner1) - 0.5) - lineWidth;
+float d2 = abs(length(cellUv - corner2) - 0.5) - lineWidth;
+float d = min(d1, d2);
+```
+
+### Why It Looks Cool
+
+The simple rotation rule creates **emergent behavior**:
+- Quarter-circle arcs form continuous "tubes" that weave across the entire grid
+- Diagonal lines create maze-like patterns
+- The randomness is local, but the patterns are global
+
+This is a beautiful example of how **local rules create global structure** — a fundamental principle in generative art, cellular automata, and nature itself.
+
+### Key Math Concepts
+
+1. **Grid Subdivision with floor() and fract()**
+   ```glsl
+   vec2 id = floor(uv * scale);   // Which cell (integer)
+   vec2 st = fract(uv * scale);   // Position within cell (0-1)
+   ```
+   This is THE most important pattern in procedural textures. Master this.
+
+2. **Deterministic Randomness (Hash Functions)**
+   ```glsl
+   float hash21(vec2 p) {
+       p = fract(p * vec2(234.34, 435.345));
+       p += dot(p, p + 34.23);
+       return fract(p.x * p.y);
+   }
+   ```
+   Same input → same output, every frame. Pure functions are GPU-friendly.
+
+3. **SDF for Arcs/Rings**
+   ```glsl
+   // Distance to a ring (circle outline)
+   float sdRing(vec2 p, vec2 center, float radius, float width) {
+       return abs(length(p - center) - radius) - width;
+   }
+   ```
+   The `abs()` turns a circle SDF into a ring by making both sides of the circle boundary positive.
+
+4. **Why Radius 0.5?**
+   - Cell is 1×1 in local coordinates
+   - Arc from corner needs to reach the midpoint of adjacent edges
+   - `0.5` radius from corner (0,0) reaches (0.5, 0) and (0, 0.5) exactly
+   - When neighbor tile flips, its arc meets yours perfectly
+
+### Tile Style Variations
+
+| Style | Element | Visual Result |
+|-------|---------|---------------|
+| 0 - Arcs | Quarter-circle rings | Woven tubes, knitting patterns |
+| 1 - Diagonals | Line segments | Maze, 10 PRINT pattern |
+| 2 - Circles | Filled quarter-circles | Organic blobs, cellular |
+| 3 - Double | Nested arcs | Richer texture, more depth |
+| 4 - Weave | Arcs with depth shading | Over/under illusion |
+
+### The 10 PRINT Connection
+
+The famous one-liner:
+```basic
+10 PRINT CHR$(205.5+RND(1)); : GOTO 10
+```
+This Commodore 64 program (1982) is essentially Truchet tiles with diagonal lines. It prints either `/` or `\` randomly, creating maze patterns. Same principle, different medium.
+
+**Book:** "10 PRINT CHR$(205.5+RND(1)); : GOTO 10" (MIT Press, 2013) — entire book analyzing this one-liner.
+
+### Animation Tricks
+
+1. **Color Flow**: Use position along the path for gradient:
+   ```glsl
+   float pathColor = length(uv) + time * speed;
+   ```
+
+2. **Tile Flipping**: Periodically change flip states:
+   ```glsl
+   float period = 4.0 + hash * 4.0;  // Vary per tile
+   float flipPhase = floor(time / period);
+   flip = fract(hash + flipPhase * 0.5);
+   ```
+
+3. **Arc Progress Coloring**: Use angle around arc center:
+   ```glsl
+   float arcProgress = atan(cellUv.y - corner.y, cellUv.x - corner.x) / PI;
+   ```
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Scale | More/fewer tiles (higher = denser pattern) |
+| Line Width | Thicker = bolder graphic, thinner = delicate |
+| Tile Style | Completely different visual language |
+| Hash Seed | Different random arrangement, same statistics |
+| Animation | Flow, flip, or pulse for motion |
+
+### Why Truchet Matters
+
+1. **Grid + Random = Order**: Demonstrates how constraints (grid, connection rules) channel randomness into structure
+2. **Emergent Complexity**: Local rules, global patterns — same principle as Conway's Game of Life
+3. **Foundation for More**: Once you understand Truchet, you can build:
+   - Wang tiles (more edge types)
+   - Marching squares (terrain generation)
+   - Wave Function Collapse (constraint-based generation)
+
+### References
+
+- **The Book of Shaders, Chapter 9**: https://thebookofshaders.com/09/
+- **Wikipedia**: https://en.wikipedia.org/wiki/Truchet_tiles
+- **Original Paper**: Sébastien Truchet, "Mémoire sur les combinaisons" (1704)
+- **10 PRINT Book**: http://10print.org/
+
+---
+
+## Implementation Notes
+
+### Truchet Tiles Shader (truchet-tiles/)
+
+**Uniforms Added:**
+- Pattern: `uScale` (grid density), `uLineWidth`, `uTileStyle` (0-4), `uAntiAlias`
+- Animation: `uAnimSpeed`, `uColorSpeed`, `uAnimateTiles` (flip animation toggle)
+- Colors: `uColor1`, `uColor2`, `uColor3`, `uBackgroundColor`
+
+**The 5 Tile Styles:**
+0. **Arcs** — Classic Smith pattern, woven tubes
+1. **Diagonals** — 10 PRINT maze effect
+2. **Quarter Circles** — Filled arcs, organic blobs
+3. **Double Arcs** — Nested rings, richer texture
+4. **Weave** — Arcs with over/under depth shading
+
+**Performance Notes:**
+- Very lightweight — just 2 SDF evaluations per pixel
+- Easily 60+ FPS at any scale
+- Anti-aliasing via `smoothstep()` is the only "expensive" part
+
+**Adaptations:**
+- Multi-style support via uniform toggle
+- Color mapped to path progress, cell ID, and arc position
+- Optional tile flip animation with per-tile timing
+- Edge highlighting for extra polish
