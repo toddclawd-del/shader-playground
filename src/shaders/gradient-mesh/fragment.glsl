@@ -1,3 +1,12 @@
+// ============================================
+// Gradient Mesh Shader
+// Creates organic, flowing color gradients using
+// mesh-based interpolation with noise distortion.
+// Inspired by Apple's gradient mesh visuals.
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;

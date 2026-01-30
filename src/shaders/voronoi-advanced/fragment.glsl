@@ -1,3 +1,14 @@
+// ============================================
+// Voronoi Advanced Shader
+// Animated Voronoi diagram with:
+// - Smooth cell animation
+// - Mouse interaction (attract/repel)
+// - Multiple color modes
+// - Edge detection for cell outlines
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;

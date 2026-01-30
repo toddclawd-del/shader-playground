@@ -1,3 +1,15 @@
+// ============================================
+// Noise Field Shader
+// Visualizes different noise algorithms:
+// - Perlin: classic smooth noise
+// - Simplex: faster, fewer artifacts
+// - Worley: cellular/voronoi-based noise
+//
+// Uses FBM (Fractal Brownian Motion) for detail
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;
