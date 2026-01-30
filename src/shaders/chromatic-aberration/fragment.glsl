@@ -1,3 +1,12 @@
+// ============================================
+// Chromatic Aberration Shader
+// Simulates optical lens imperfections by
+// offsetting RGB channels independently.
+// Features: barrel distortion, vignette, film grain
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;
@@ -80,38 +89,44 @@ vec2 getOffset(vec2 uv, float amount, int mode) {
 }
 
 // ============================================
-// Base Pattern (something to apply the effect to)
+// Base Pattern - Vibrant design for chromatic effect
 // ============================================
 
 vec3 basePattern(vec2 uv, float time) {
-    // Create interesting patterns to showcase the chromatic effect
+    // High-contrast patterns that showcase chromatic aberration
     
-    // Flowing noise
-    float n1 = fbm(uv * 3.0 + time * 0.3);
-    float n2 = fbm(uv * 5.0 - time * 0.2 + 10.0);
+    // Flowing organic shapes
+    float n1 = fbm(uv * 2.5 + time * 0.2);
+    float n2 = fbm(uv * 4.0 - time * 0.15 + 5.0);
     
-    // Circular patterns
+    // Animated concentric rings
     vec2 center = vec2(0.5);
     float dist = length(uv - center);
-    float circles = sin(dist * 20.0 - time * 2.0) * 0.5 + 0.5;
+    float rings = sin(dist * 25.0 - time * 3.0) * 0.5 + 0.5;
+    rings = pow(rings, 0.7); // Sharpen rings for more aberration contrast
     
-    // Grid lines
-    vec2 grid = abs(fract(uv * 8.0) - 0.5);
-    float lines = smoothstep(0.02, 0.0, min(grid.x, grid.y));
+    // Bold diagonal stripes
+    float stripe = sin((uv.x - uv.y) * 20.0 + time * 1.5);
+    stripe = smoothstep(-0.3, 0.3, stripe);
     
-    // Diagonal stripes
-    float stripe = sin((uv.x + uv.y) * 30.0 + time) * 0.5 + 0.5;
+    // Hexagonal-like pattern
+    vec2 hexUv = uv * 6.0;
+    float hex = sin(hexUv.x + sin(hexUv.y * 1.5)) * cos(hexUv.y + cos(hexUv.x * 1.5));
+    hex = smoothstep(-0.5, 0.5, hex);
     
-    // Combine patterns
-    float pattern = n1 * 0.4 + circles * 0.3 + lines * 0.2 + stripe * 0.1;
+    // Layer patterns with strong contrast
+    float pattern = rings * 0.4 + stripe * 0.3 + hex * 0.2 + n1 * 0.1;
     
-    // Add some sharp edges for more visible chromatic effect
-    float edge = smoothstep(0.45, 0.55, n2);
-    pattern = mix(pattern, edge, 0.3);
+    // Create sharp edges for dramatic aberration
+    float edges = smoothstep(0.4, 0.6, n2);
+    pattern = mix(pattern, edges, 0.25);
     
-    // Create color from pattern
+    // Vibrant color mapping
     vec3 color = mix(uColor1, uColor2, pattern);
-    color = mix(color, uColor3, n1 * n2);
+    color = mix(color, uColor3, rings * n1 * 0.8);
+    
+    // Add brightness variation
+    color *= 0.8 + n1 * 0.4;
     
     return color;
 }
