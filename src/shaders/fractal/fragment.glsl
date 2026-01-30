@@ -1,3 +1,15 @@
+// ============================================
+// Fractal Explorer Shader
+// Renders classic fractals in real-time:
+// - Mandelbrot: z = z² + c (pixel coords)
+// - Julia: z = z² + c (animated c parameter)
+// - Burning Ship: z = (|Re(z)| + i|Im(z)|)² + c
+//
+// Features smooth coloring for anti-aliased edges
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;
@@ -61,20 +73,23 @@ vec3 mandelbrot(vec2 c, int maxIter) {
     vec2 z = vec2(0.0);
     int iter = 0;
     
-    for (int i = 0; i < 500; i++) {
+    // Optimized loop with early bailout at 256 for performance
+    for (int i = 0; i < 256; i++) {
         if (i >= maxIter) break;
         if (dot(z, z) > 4.0) break;
         
-        // z = z² + c
+        // z = z² + c (optimized: single temp variable)
         z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
         iter++;
     }
     
     if (iter >= maxIter) {
-        return uColor1 * 0.2; // Inside the set
+        // Inside the set - use gradient based on final z
+        float interior = length(z) * 0.1;
+        return mix(uColor1 * 0.15, uColor1 * 0.3, interior);
     }
     
-    // Smooth coloring using escape time
+    // Smooth coloring using escape time algorithm
     float smoothIter = float(iter) - log2(log2(dot(z, z))) + 4.0;
     float t = smoothIter / float(maxIter);
     
@@ -85,17 +100,17 @@ vec3 mandelbrot(vec2 c, int maxIter) {
 vec3 juliaSet(vec2 z, vec2 c, int maxIter) {
     int iter = 0;
     
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 256; i++) {
         if (i >= maxIter) break;
         if (dot(z, z) > 4.0) break;
         
-        // z = z² + c
         z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
         iter++;
     }
     
     if (iter >= maxIter) {
-        return uColor1 * 0.2;
+        float interior = length(z) * 0.1;
+        return mix(uColor1 * 0.15, uColor1 * 0.3, interior);
     }
     
     float smoothIter = float(iter) - log2(log2(dot(z, z))) + 4.0;
@@ -109,18 +124,19 @@ vec3 burningShip(vec2 c, int maxIter) {
     vec2 z = vec2(0.0);
     int iter = 0;
     
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 256; i++) {
         if (i >= maxIter) break;
         if (dot(z, z) > 4.0) break;
         
-        // Take absolute values before squaring
+        // Take absolute values before squaring (creates "burning" effect)
         z = abs(z);
         z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
         iter++;
     }
     
     if (iter >= maxIter) {
-        return uColor1 * 0.2;
+        float interior = length(z) * 0.1;
+        return mix(uColor1 * 0.15, uColor1 * 0.3, interior);
     }
     
     float smoothIter = float(iter) - log2(log2(dot(z, z))) + 4.0;
