@@ -1,3 +1,12 @@
+// ============================================
+// Particle Field Shader
+// GPU-simulated particles using curl noise for
+// organic, fluid-like motion with mouse interaction.
+// Optimized: reduced trail iterations for 60fps
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;
@@ -14,7 +23,7 @@ uniform vec3 uColor2;
 uniform vec3 uBackgroundColor;
 
 #define PI 3.14159265359
-#define MAX_PARTICLES 100.0
+#define MAX_PARTICLES 80.0  // Optimized for performance
 
 // ============================================
 // Hash Functions for Particle Positions
@@ -165,8 +174,8 @@ void main() {
     // Number of particles to render
     int numParticles = int(min(uParticleCount, MAX_PARTICLES));
     
-    // Render each particle
-    for (int i = 0; i < 100; i++) {
+    // Render each particle with optimized loop
+    for (int i = 0; i < 80; i++) {
         if (i >= numParticles) break;
         
         float id = float(i);
@@ -189,18 +198,17 @@ void main() {
         color += particleColor * glow * 0.5;
     }
     
-    // Add subtle trails (motion blur effect)
-    for (int i = 0; i < 100; i++) {
+    // Optimized trails - single offset per particle for performance
+    for (int i = 0; i < 80; i++) {
         if (i >= numParticles) break;
         
         float id = float(i);
-        for (int j = 1; j < 5; j++) {
-            float trailTime = time - float(j) * 0.02;
-            vec2 trailPos = getParticlePos(id, trailTime);
-            float trail = drawParticle(uv, trailPos, size * 0.5);
-            vec3 trailColor = getParticleColor(id, trailPos, vec2(0.0));
-            color += trailColor * trail * 0.1 / float(j);
-        }
+        // Single trail position for efficiency
+        float trailTime = time - 0.04;
+        vec2 trailPos = getParticlePos(id, trailTime);
+        float trail = drawParticle(uv, trailPos, size * 0.6);
+        vec3 trailColor = getParticleColor(id, trailPos, vec2(0.0));
+        color += trailColor * trail * 0.15;
     }
     
     // Mouse glow
