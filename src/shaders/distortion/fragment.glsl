@@ -1,3 +1,14 @@
+// ============================================
+// UV Distortion Shader
+// Creates various UV warping effects including:
+// - Ripple: concentric waves from center
+// - Wave: sinusoidal displacement
+// - Twist: rotational swirl effect
+// - Bulge: magnification lens effect
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;
@@ -14,7 +25,7 @@ uniform vec3 uBackgroundColor;
 #define PI 3.14159265359
 
 // ============================================
-// Noise for organic patterns
+// Noise for organic texture
 // ============================================
 
 float hash(vec2 p) {
@@ -120,34 +131,39 @@ vec2 bulgeDistortion(vec2 uv, vec2 center, float time) {
 }
 
 // ============================================
-// Visualization
+// Visualization - Rich visual pattern
 // ============================================
 
 vec3 createPattern(vec2 uv, float time) {
-    // Create a grid pattern to visualize distortion
-    vec2 grid = fract(uv * uFrequency * 2.0);
+    // Create an eye-catching pattern to showcase distortion
+    vec2 grid = fract(uv * uFrequency);
     
-    // Checkerboard
-    float check = step(0.5, grid.x) * step(0.5, grid.y) +
-                  (1.0 - step(0.5, grid.x)) * (1.0 - step(0.5, grid.y));
-    
-    // Smooth lines
-    float lineX = smoothstep(0.02, 0.0, abs(grid.x - 0.5));
-    float lineY = smoothstep(0.02, 0.0, abs(grid.y - 0.5));
+    // Glowing grid lines with gradient
+    float lineX = smoothstep(0.04, 0.0, abs(grid.x - 0.5));
+    float lineY = smoothstep(0.04, 0.0, abs(grid.y - 0.5));
     float lines = max(lineX, lineY);
     
-    // Add circular patterns
-    float circles = length(fract(uv * uFrequency) - 0.5);
-    circles = smoothstep(0.3, 0.28, circles);
+    // Concentric rings at grid intersections
+    vec2 cellCenter = floor(uv * uFrequency) + 0.5;
+    float rings = sin(length(uv * uFrequency - cellCenter) * 15.0 - time * 2.0);
+    rings = smoothstep(-0.2, 0.2, rings) * 0.4;
     
-    // Combine patterns
-    vec3 color = mix(uBackgroundColor, uColor1, check * 0.3);
-    color = mix(color, uColor2, lines * 0.8);
-    color = mix(color, uColor1, circles * 0.5);
+    // Animated circular patterns
+    float circles = length(grid - 0.5);
+    circles = smoothstep(0.35, 0.3, circles);
     
-    // Add noise texture
-    float n = noise(uv * 50.0 + time);
-    color += n * 0.05;
+    // Flowing gradient background
+    float gradient = sin(uv.x * 3.0 + uv.y * 2.0 + time) * 0.5 + 0.5;
+    
+    // Rich color composition
+    vec3 color = mix(uBackgroundColor, uColor1 * 0.6, gradient * 0.5);
+    color = mix(color, uColor2 * 1.2, lines);
+    color = mix(color, uColor1 * 1.3, circles * 0.7);
+    color += uColor2 * rings * 0.3;
+    
+    // Subtle animated shimmer
+    float shimmer = noise(uv * 30.0 + time * 0.5);
+    color += shimmer * 0.03;
     
     return color;
 }
