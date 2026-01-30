@@ -1,3 +1,17 @@
+// ============================================
+// Reaction-Diffusion Shader
+// Artistic approximation of Gray-Scott model
+// Creates organic patterns like:
+// - Mitosis (cell division)
+// - Coral growth
+// - Animal skin patterns (spots/stripes)
+//
+// Note: True RD needs ping-pong buffers.
+// This approximates the visual aesthetic.
+// ============================================
+
+precision highp float;
+
 varying vec2 vUv;
 
 uniform float uTime;
@@ -12,14 +26,6 @@ uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uBackgroundColor;
-
-// ============================================
-// Reaction-Diffusion Simulation
-// Gray-Scott Model approximation in fragment shader
-// ============================================
-
-// Note: True reaction-diffusion needs ping-pong buffers.
-// This is an artistic approximation that creates similar patterns.
 
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
