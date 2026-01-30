@@ -15,6 +15,10 @@ import { voronoiConfig } from './voronoi/config'
 import { domainWarpConfig } from './domain-warp/config'
 import { juliaSetConfig } from './julia-set/config'
 import { truchetTilesConfig } from './truchet-tiles/config'
+// New shaders
+import { gradientMeshConfig } from './gradient-mesh/config'
+import { distortionConfig } from './distortion/config'
+import { chromaticAberrationConfig } from './chromatic-aberration/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -35,6 +39,10 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   'domain-warp': domainWarpConfig,
   'julia-set': juliaSetConfig,
   'truchet-tiles': truchetTilesConfig,
+  // New shaders
+  'gradient-mesh': gradientMeshConfig,
+  distortion: distortionConfig,
+  'chromatic-aberration': chromaticAberrationConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
