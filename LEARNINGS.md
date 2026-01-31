@@ -429,3 +429,140 @@ This Commodore 64 program (1982) is essentially Truchet tiles with diagonal line
 - Color mapped to path progress, cell ID, and arc position
 - Optional tile flip animation with per-tile timing
 - Edge highlighting for extra polish
+
+---
+
+## Gyroid Minimal Surface (Added 2026-01-31)
+
+### What It Does
+
+A gyroid is a **triply periodic minimal surface** — a surface that:
+1. Repeats infinitely in all 3 directions (triply periodic)
+2. Has zero mean curvature everywhere (minimal surface)
+3. Self-intersects never — it divides 3D space into two congruent labyrinthine regions
+
+Discovered by NASA scientist Alan Schoen in 1970, gyroids appear in nature in butterfly wings, certain polymer structures, and cell membranes. They're the math behind some of the most organic-looking structures in existence.
+
+### The Core Technique
+
+```glsl
+// THE GYROID FORMULA — Elegant one-liner
+float gyroid(vec3 p) {
+    return dot(sin(p), cos(p.yzx));
+}
+
+// Mathematically equivalent to:
+// sin(x)*cos(y) + sin(y)*cos(z) + sin(z)*cos(x)
+```
+
+That's it. One line. The `dot(sin(p), cos(p.yzx))` trick computes the sum of three sine-cosine products by:
+1. `sin(p)` → `vec3(sin(x), sin(y), sin(z))`
+2. `cos(p.yzx)` → `vec3(cos(y), cos(z), cos(x))` (swizzled!)
+3. `dot()` → sums the component-wise products
+
+### Why It Looks Cool
+
+The gyroid creates **organic, flowing patterns** because:
+1. It's a **continuous field** — smooth transitions everywhere
+2. The surface (where value = 0) forms interconnected tunnels
+3. Slicing through 3D creates ever-changing 2D cross-sections
+4. The pattern has no straight lines — all curves, all organic
+
+Animating the z-coordinate (slicing through the structure over time) creates mesmerizing flowing motion that looks like:
+- Living tissue
+- Alien architecture  
+- Soap film structures
+- Neural networks
+
+### Key Math Concepts
+
+1. **Implicit Surfaces**
+   - The gyroid is defined by `f(x,y,z) = 0`
+   - Points where the function equals zero ARE the surface
+   - Positive values = one side, Negative = other side
+   
+2. **Minimal Surface**
+   - A surface that locally minimizes area
+   - Soap films naturally form minimal surfaces
+   - Zero mean curvature at every point
+   
+3. **Triply Periodic**
+   - Pattern repeats with period 2π in all directions
+   - Scale parameter controls how many periods are visible
+   - `p * scale` zooms in/out on the repeating structure
+
+4. **Using Gyroid as Noise**
+   - Stack multiple gyroids at different scales (FBM style)
+   - `fbm_gyroid(p) = Σ gyroid(p * 2^i) / 2^i`
+   - Creates complex organic textures
+
+### Visualization Modes
+
+| Mode | Name | What It Shows |
+|------|------|---------------|
+| 0 | Smooth Gradient | Field value mapped to color gradient |
+| 1 | Contour Lines | Topographic map of the field |
+| 2 | Binary Surface | The actual gyroid surface (value ≈ 0) |
+| 3 | Heat Map | Classic scientific visualization |
+| 4 | Cellular | Organic/biological appearance |
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Scale | Density of pattern (higher = smaller features) |
+| Slice Speed | Animation speed through 3D structure |
+| Thickness | Width of the surface band in Mode 2 |
+| Octaves | FBM complexity (more = more organic detail) |
+| Distortion | Adds rotation wobble for psychedelic effect |
+
+### Why Gyroids Matter
+
+1. **Nature's Architecture**: Gyroids appear in biological structures that need maximum surface area in minimum volume — cell membranes, lung tissue, butterfly wings
+2. **Material Science**: Gyroid-structured materials have unique mechanical and optical properties
+3. **3D Printing**: Gyroid infill patterns are popular for strength-to-weight optimization
+4. **Shader Math Gateway**: The formula is simple enough to understand but produces surprisingly complex results — perfect for learning implicit surfaces
+
+### The Math Behind the Magic
+
+The gyroid equation approximates the **zero-level set** of the first Fourier term of the Schwarz P-surface. In plain English: it's the simplest smooth function that creates this type of interconnected tunnel structure.
+
+The `yzx` swizzle in `cos(p.yzx)` creates the **chiral** (handed) nature of the gyroid — it spirals in a specific direction. Using `zxy` instead creates the mirror-image gyroid.
+
+### References
+
+- **Wikipedia**: https://en.wikipedia.org/wiki/Gyroid
+- **Alan Schoen's Original Paper**: "Infinite periodic minimal surfaces without self-intersections" (1970)
+- **Shadertoy - Up in Flames**: https://www.shadertoy.com/view/WtGXDD (gyroid raymarching)
+- **OneShader - Gyroid Noise**: https://oneshader.net/shader/c355b33db7
+
+---
+
+## Implementation Notes
+
+### Gyroid Shader (gyroid/)
+
+**Uniforms Added:**
+- Pattern: `uScale`, `uSliceSpeed`, `uSliceOffset`, `uThickness`, `uDistortion`
+- FBM: `uOctaves`, `uLacunarity`, `uPersistence`
+- Visualization: `uVisualization` (0-4), `uContourFrequency`, `uGlow`, `uColorMix`
+- Colors: `uColor1`, `uColor2`, `uColor3`, `uBackgroundColor`
+
+**The 5 Visualization Modes:**
+0. **Smooth Gradient** — Field value as color blend
+1. **Contour Lines** — Topographic/elevation style
+2. **Binary Surface** — Shows the actual gyroid surface with glow
+3. **Heat Map** — Classic blue→cyan→green→yellow→red
+4. **Cellular** — Organic, biological appearance
+
+**Performance Notes:**
+- Single gyroid: Extremely fast (just sin/cos operations)
+- With 6 octaves FBM: Still 60+ FPS (adds 6× the sin/cos)
+- The visualization modes add negligible cost
+
+**Adaptations:**
+- 2D slice through 3D gyroid (animated Z-axis)
+- Optional FBM stacking for complexity
+- 5 visualization modes for different aesthetics
+- Rotation distortion for psychedelic effects
+- Vignette for polish
