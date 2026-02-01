@@ -25,6 +25,7 @@ import { fractalConfig } from './fractal/config'
 import { noiseFieldConfig } from './noise-field/config'
 import { voronoiAdvancedConfig } from './voronoi-advanced/config'
 import { gyroidConfig } from './gyroid/config'
+import { thinFilmConfig } from './thin-film/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -55,6 +56,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   'noise-field': noiseFieldConfig,
   'voronoi-advanced': voronoiAdvancedConfig,
   gyroid: gyroidConfig,
+  'thin-film': thinFilmConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({

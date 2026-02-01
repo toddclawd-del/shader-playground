@@ -566,3 +566,183 @@ The `yzx` swizzle in `cos(p.yzx)` creates the **chiral** (handed) nature of the 
 - 5 visualization modes for different aesthetics
 - Rotation distortion for psychedelic effects
 - Vignette for polish
+
+---
+
+## Thin-Film Interference (Added 2026-02-01)
+
+### What It Does
+
+Thin-film interference creates **iridescent rainbow colors** like soap bubbles, oil slicks, and butterfly wings. When light bounces inside a very thin layer (thickness comparable to light wavelengths), the reflected waves interfere with each other — some colors amplify, others cancel out.
+
+This is real physics you can see every day: blow a soap bubble and watch the colors shift as it thins.
+
+### The Core Technique
+
+```glsl
+// Thin-film interference in ~10 lines
+float thinFilmReflectance(float wavelength, float thickness, float cosTheta, 
+                          float n1, float n2, float n3) {
+    // Snell's law: sin(θ1)/sin(θ2) = n2/n1
+    float cosTheta2 = snellCosTheta2(n1, n2, cosTheta);
+    
+    // Optical Path Difference: how much farther does the second ray travel?
+    float opd = 2.0 * n2 * thickness * cosTheta2;  // in nanometers
+    
+    // Phase shifts at interfaces (π shift if entering denser medium)
+    float phaseOffset = phaseShift(n1, n2) + phaseShift(n2, n3);
+    
+    // Interference: constructive when waves align, destructive when opposite
+    float phi = (2.0 * PI / wavelength) * opd + phaseOffset;
+    return 0.5 * (1.0 + cos(phi));  // 1 = constructive, 0 = destructive
+}
+
+// Sample R, G, B wavelengths
+vec3 iridescence = vec3(
+    thinFilmReflectance(650.0, thickness, cos0, n1, n2, n3),  // Red: 650nm
+    thinFilmReflectance(510.0, thickness, cos0, n1, n2, n3),  // Green: 510nm
+    thinFilmReflectance(475.0, thickness, cos0, n1, n2, n3)   // Blue: 475nm
+);
+```
+
+### Why It Looks Cool
+
+1. **View-dependent colors**: The color changes as you move your head (cosTheta changes)
+2. **Thickness-dependent colors**: Thinner films = different colors (why bubbles look different as they drain)
+3. **Rainbow spectrum**: All visible wavelengths compete, creating smooth gradients
+4. **Real physics**: You can predict exactly what color a 300nm soap film will show at 45°
+
+### Key Math Concepts
+
+1. **Optical Path Difference (OPD)**
+   
+   When light hits a thin film, some reflects immediately (Ray 1), some enters the film, reflects off the back, and exits (Ray 2). Ray 2 travels farther:
+   ```
+   OPD = 2 * n₂ * d * cos(θ₂)
+   ```
+   Where:
+   - `n₂` = refractive index of film (soap ≈ 1.33, oil ≈ 1.5)
+   - `d` = film thickness in nanometers
+   - `θ₂` = angle inside the film (from Snell's law)
+
+2. **Snell's Law (Refraction)**
+   ```
+   n₁ * sin(θ₁) = n₂ * sin(θ₂)
+   ```
+   Light bends when entering a different medium. Higher refractive index = slower light = more bending toward normal.
+
+3. **Phase Shift on Reflection**
+   
+   When light reflects off a denser medium (n₁ < n₂), the wave flips by half a wavelength (π radians). This is why we check:
+   ```glsl
+   float shift = (n1 < n2) ? 0.5 : 0.0;  // Half wavelength shift
+   ```
+
+4. **Interference Condition**
+   
+   Constructive interference (bright) when OPD is an integer multiple of wavelength:
+   ```
+   OPD = m * λ    (m = 1, 2, 3, ...)
+   ```
+   Destructive interference (dark) when OPD is a half-integer multiple:
+   ```
+   OPD = (m + 0.5) * λ
+   ```
+
+5. **Wavelength ↔ Color**
+   
+   Visible light: 380nm (violet) → 780nm (red)
+   - Blue: ~475nm
+   - Green: ~510nm
+   - Yellow: ~580nm
+   - Red: ~650nm
+   
+   Sample at least R, G, B wavelengths. For better accuracy, sample 16+ wavelengths across the spectrum.
+
+### The Refractive Index Table
+
+| Material | Refractive Index (n) |
+|----------|---------------------|
+| Air | 1.00 |
+| Water/Soap | 1.33 |
+| Oil | 1.45-1.50 |
+| Glass | 1.50 |
+| Diamond | 2.42 |
+
+**Why it matters**: The n values determine:
+1. How much light bends (Snell's law)
+2. Whether phase shift occurs at each interface
+3. The OPD calculation
+
+### Visualization Modes
+
+| Mode | Name | What It Simulates |
+|------|------|-------------------|
+| 0 | Soap Bubble | Gravity causes thinner top, thicker bottom + flowing swirls |
+| 1 | Oil Slick | Pooling toward center with concentric rings |
+| 2 | Abstract | Animated flowing patterns, pure eye candy |
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Thickness range | Different color bands (thicker = more cycles through spectrum) |
+| N2 (film index) | Oil (1.5) vs water (1.33) changes the color pattern |
+| Animation speed | Faster/slower flowing |
+| Fresnel strength | More/less color at edges |
+| Thickness variation | More/less organic texture |
+
+### Real-World Examples
+
+1. **Soap Bubbles**: n₂ ≈ 1.33, thickness 100-1000nm, constantly thinning
+2. **Oil on Water**: n₂ ≈ 1.5, forms interference patterns as it spreads
+3. **Butterfly Wings**: Microscopic structures with precise thicknesses create specific colors
+4. **CD/DVD**: Diffraction grating (related but different — periodic structure vs thin film)
+5. **Car Paint**: Engineered thin-film layers for iridescent "flip" colors
+
+### The Fresnel Effect
+
+The amount of light reflected vs transmitted depends on the viewing angle:
+- **Head-on (cosθ ≈ 1)**: Most light passes through, little reflection
+- **Grazing angle (cosθ ≈ 0)**: Most light reflects
+
+This is why soap bubbles have stronger colors at the edges. We approximate with:
+```glsl
+float fresnel = pow(1.0 - cosTheta, 2.0);  // Schlick approximation
+```
+
+### References
+
+- **Alan Zucconi's Series**: https://www.alanzucconi.com/2017/07/25/the-mathematics-of-thin-film-interference/
+- **Shadertoy - Physically-Based Soap Bubble**: https://www.shadertoy.com/view/XtKyRK
+- **Wikipedia**: https://en.wikipedia.org/wiki/Thin-film_interference
+- **Physics Origin**: Thomas Young's double-slit experiment (1801)
+
+---
+
+## Implementation Notes
+
+### Thin-Film Interference Shader (thin-film/)
+
+**Uniforms Added:**
+- Film: `uThicknessMin`, `uThicknessMax` (nm), `uThicknessVariation`
+- Optics: `uN1`, `uN2`, `uN3` (refractive indices)
+- Animation: `uAnimSpeed`, `uSwirl`, `uNoiseScale`
+- Appearance: `uVisualization` (0-2), `uColorIntensity`, `uFresnelStrength`, `uBaseColor`
+
+**The 3 Visualization Modes:**
+0. **Soap Bubble** — Gravity drainage + swirling flow (thick bottom, thin top)
+1. **Oil Slick** — Radial pooling with interference rings
+2. **Abstract** — Rotating domain-warped patterns
+
+**Performance Notes:**
+- Fast version: 3 wavelength samples (R, G, B) — 60+ FPS easily
+- Full version: 16 wavelength samples — still 60+ FPS
+- Main cost is the spectral loop; everything else is basic math
+
+**Adaptations:**
+- View angle simulated from UV distance-from-center (works on flat plane)
+- FBM noise for organic thickness variation
+- Three visualization modes for different aesthetics
+- Wavelength-to-RGB conversion for proper spectral colors
+- Fresnel blending for realistic edge intensity
