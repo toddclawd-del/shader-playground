@@ -746,3 +746,242 @@ float fresnel = pow(1.0 - cosTheta, 2.0);  // Schlick approximation
 - Three visualization modes for different aesthetics
 - Wavelength-to-RGB conversion for proper spectral colors
 - Fresnel blending for realistic edge intensity
+
+---
+
+## Underwater Caustics (Added 2026-02-02)
+
+### What It Does
+
+Caustics are the dancing patterns of light you see on the bottom of a swimming pool. They occur when sunlight passes through a wavy water surface and gets **refracted** (bent) — the curved surface acts like thousands of tiny lenses, focusing and defocusing light to create bright lines and dark shadows.
+
+This is one of the most beautiful phenomena in nature, and simulating it teaches you about wave physics, optics, and computational geometry all at once.
+
+### The Core Technique
+
+Caustics require three main components:
+
+```glsl
+// 1. WAVE SIMULATION - Gerstner waves for realistic water
+vec3 gerstnerWave(vec2 position, vec2 direction, float frequency, float amplitude, float steepness) {
+    float phase = sqrt(9.81 * frequency);  // Deep water dispersion
+    float theta = dot(direction, position) * frequency + time * phase;
+    
+    // Gerstner: particles move in circles, not just up/down
+    // This creates sharp crests and flat troughs (realistic!)
+    float Q = steepness / (frequency * amplitude);
+    return vec3(
+        Q * amplitude * direction.x * cos(theta),  // x displacement
+        Q * amplitude * direction.y * cos(theta),  // y displacement  
+        amplitude * sin(theta)                      // height
+    );
+}
+
+// 2. SURFACE NORMALS - from the height field
+vec3 computeNormal(vec2 p) {
+    float epsilon = 0.01;
+    float h0 = getWaveHeight(p);
+    float hx = getWaveHeight(p + vec2(epsilon, 0.0));
+    float hy = getWaveHeight(p + vec2(0.0, epsilon));
+    
+    // Gradient gives us the surface slope
+    return normalize(vec3(
+        -(hx - h0) / epsilon,
+        -(hy - h0) / epsilon,
+        1.0
+    ));
+}
+
+// 3. REFRACTION - Snell's Law
+vec3 refractRay(vec3 incident, vec3 normal, float eta) {
+    // eta = n1/n2 (air/water ≈ 1/1.33 ≈ 0.75)
+    float cosI = -dot(normal, incident);
+    float sinT2 = eta * eta * (1.0 - cosI * cosI);
+    
+    if (sinT2 > 1.0) return reflect(incident, normal);  // Total internal reflection
+    
+    float cosT = sqrt(1.0 - sinT2);
+    return eta * incident + (eta * cosI - cosT) * normal;
+}
+```
+
+### Why It Looks Cool
+
+Caustics create **emergent complexity** from simple physics:
+
+1. **Light concentration**: When wave curves focus rays together → bright lines
+2. **Light spreading**: When curves spread rays apart → dark regions
+3. **Interference**: Overlapping bright regions from different waves create intricate patterns
+4. **Animation**: The constantly moving surface creates hypnotic, organic motion
+
+The resulting pattern has **infinite detail** — no matter how close you zoom, there's more structure. This is because the wave surface has continuous curvature that's never perfectly flat.
+
+### Key Math Concepts
+
+1. **Gerstner Waves (Trochoid Waves)**
+   
+   Unlike simple sine waves where water moves only up/down, Gerstner waves model the actual circular motion of water particles:
+   
+   ```
+   Real water: particles orbit in circles
+   Surface:    steep crests, flat troughs
+   Result:     much more realistic appearance
+   ```
+   
+   The `steepness` parameter (0-1) controls how "peaked" the waves are. At steepness=1, crests become infinitely sharp (breaking waves).
+
+2. **Snell's Law of Refraction**
+   
+   When light crosses between materials with different refractive indices:
+   
+   ```
+   n₁ · sin(θ₁) = n₂ · sin(θ₂)
+   ```
+   
+   | Material | Refractive Index (n) |
+   |----------|---------------------|
+   | Air | 1.00 |
+   | Water | 1.33 |
+   | Glass | 1.50 |
+   | Diamond | 2.42 |
+   
+   Higher n = light travels slower = bends toward normal when entering
+
+3. **Normal Calculation via Finite Differences**
+   
+   For a height field z = f(x, y), the normal is:
+   ```glsl
+   normal = normalize(vec3(-∂f/∂x, -∂f/∂y, 1.0))
+   ```
+   
+   We approximate partial derivatives:
+   ```glsl
+   ∂f/∂x ≈ (f(x + ε) - f(x)) / ε
+   ```
+   
+   This is **numerical differentiation** — a fundamental technique you'll use constantly.
+
+4. **Ray Tracing for Caustics**
+   
+   For each point on the pool floor, we ask: "How much light arrives here?"
+   
+   The trick: sample the surface above, refract rays downward, and count how many land near our point. More rays = brighter caustic.
+   
+   ```
+   Light concentration = 1 / (area rays spread to)
+   ```
+
+5. **Deep Water Dispersion**
+   
+   Wave speed depends on wavelength in deep water:
+   ```
+   phase_velocity = √(g · λ / 2π) = √(g / k)
+   ```
+   Where g = 9.81 m/s² (gravity), k = wave number
+   
+   This is why tsunamis travel so fast (very long wavelength).
+
+### Visualization Modes
+
+| Mode | Name | Description |
+|------|------|-------------|
+| 0 | Full Simulation | Raytraced caustics with Gerstner waves |
+| 1 | Fast Fake | Interference patterns (cheaper, stylized) |
+| 2 | Wave Height | Shows the water surface itself |
+| 3 | Normals | Surface normals as RGB (for debugging) |
+
+### The Fake Caustics Trick
+
+Full caustic raytracing is expensive (sampling many surface points per floor pixel). A common shortcut:
+
+```glsl
+// Stack multiple sine waves at different angles
+float caustic = 0.0;
+for (int i = 0; i < 5; i++) {
+    float angle = random(i) * TWO_PI;
+    float freq = 2.0 + i * 1.5;
+    vec2 dir = vec2(cos(angle), sin(angle));
+    
+    float wave = sin(dot(uv, dir) * freq + time);
+    caustic += pow(max(wave, 0.0), 2.0);  // Squared for sharp bright lines
+}
+```
+
+This creates convincing caustic-like patterns at a fraction of the cost. Many games use this approach.
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Wave Count | More waves = more complex patterns (also slower) |
+| Wave Amplitude | Higher = more dramatic light focusing |
+| Wave Steepness | Higher = sharper crests, more intense caustics |
+| Water Depth | Deeper = softer caustics (rays spread more) |
+| Refractive Index | Higher = more bending = more intense focusing |
+| Animation Speed | Affects the "mood" — slow = serene, fast = chaotic |
+
+### Real-World Examples
+
+1. **Swimming Pool**: Classic caustics — sunlight through rippling surface
+2. **Ocean Floor**: Dappled light dancing on sand/coral
+3. **Wine Glass**: Caustics from curved glass surface
+4. **Disco Ball**: Thousands of tiny caustics from reflective facets
+5. **Bathroom Light**: Diffused caustics through frosted shower glass
+
+### The Math Behind Light Focusing
+
+When parallel rays hit a curved surface, they converge/diverge:
+
+```
+Convex surface → rays converge → bright spot (focus)
+Concave surface → rays diverge → dim region
+Inflection point → rays parallel → caustic line (cusp)
+```
+
+The caustic pattern is the **envelope** of all refracted rays — the curve that's tangent to every ray. This is pure differential geometry!
+
+### Performance Considerations
+
+- **Full raytracing**: 16-32 samples per pixel, ~45-60 FPS
+- **Fake caustics**: Single-pass, ~60+ FPS easily
+- **Hybrid**: Use fake for overview, raytrace for hero shots
+- **Wave count**: Each wave adds sin/cos calls; 5-6 is usually enough
+
+### References
+
+- **Evan Wallace's WebGL Water**: https://madebyevan.com/webgl-water/ (the OG)
+- **Medium Article on Realtime Caustics**: https://medium.com/@evanwallace/rendering-realtime-caustics-in-webgl-2a99a29a0b2c
+- **GPU Gems 1, Chapter 2**: "Rendering Water Caustics"
+- **Wikipedia - Caustic (optics)**: https://en.wikipedia.org/wiki/Caustic_(optics)
+- **Gerstner Waves**: https://en.wikipedia.org/wiki/Trochoidal_wave
+
+---
+
+## Implementation Notes
+
+### Caustics Shader (caustics/)
+
+**Uniforms Added:**
+- Waves: `uScale`, `uAnimSpeed`, `uWaveCount`, `uWaveAmplitude`, `uWaveSteepness`
+- Physics: `uRefractiveIndex`, `uWaterDepth`
+- Appearance: `uCausticIntensity`, `uCausticSharpness`
+- Visualization: `uVisualization` (0-3), `uShowWaves`, `uColorMix`
+- Colors: `uColor1`, `uColor2`, `uColor3`, `uBackgroundColor`
+
+**The 4 Visualization Modes:**
+0. **Full Simulation** — Raytraced caustics with surface sampling
+1. **Fast Fake** — Interference patterns, very performant
+2. **Wave Height** — Shows the Gerstner wave surface
+3. **Normals** — Surface normal vectors as RGB
+
+**Performance Notes:**
+- Mode 0: 16 samples per pixel, ~50-60 FPS
+- Mode 1: Single pass, 60+ FPS
+- Mode 2/3: Nearly free (wave evaluation only)
+
+**Adaptations:**
+- Multiple Gerstner waves with pseudo-random directions
+- Finite-difference normals for surface gradients
+- Snell's law refraction with total internal reflection handling
+- Golden angle spiral sampling for better coverage
+- Hybrid approach: full simulation + fake detail overlay
