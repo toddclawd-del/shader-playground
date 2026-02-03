@@ -985,3 +985,251 @@ The caustic pattern is the **envelope** of all refracted rays — the curve that
 - Snell's law refraction with total internal reflection handling
 - Golden angle spiral sampling for better coverage
 - Hybrid approach: full simulation + fake detail overlay
+
+---
+
+## Kaleidoscope / Mirror Symmetry (Added 2026-02-03)
+
+### What It Does
+
+A kaleidoscope shader creates **n-fold mirror symmetry** — the same pattern reflected and rotated around a central point, like the view through a real kaleidoscope. By combining polar coordinates with modular arithmetic and reflection, you can transform any image or pattern into a hypnotic mandala.
+
+This is one of the most visually rewarding effects you can build with relatively simple math.
+
+### The Core Technique
+
+```glsl
+// THE KALEIDOSCOPE TRANSFORM
+vec2 kaleidoscope(vec2 uv, float segments) {
+    // Convert to polar coordinates
+    float angle = atan(uv.y, uv.x);
+    float radius = length(uv);
+    
+    // Segment angle (360° / n segments)
+    float segmentAngle = TAU / segments;  // TAU = 2π
+    
+    // Fold angle into first segment using modulo
+    angle = mod(angle, segmentAngle);
+    
+    // Mirror every other segment (THIS IS KEY!)
+    // Without this, you get rotational symmetry only
+    // With this, you get TRUE mirror symmetry
+    if (mod(floor(atan(uv.y, uv.x) / segmentAngle), 2.0) >= 1.0) {
+        angle = segmentAngle - angle;
+    }
+    
+    // Convert back to cartesian
+    return vec2(cos(angle), sin(angle)) * radius;
+}
+```
+
+### Why It Looks Cool
+
+The kaleidoscope transform creates **infinite complexity from simple inputs**:
+
+1. A single blob of noise becomes a symmetric flower
+2. A random texture becomes a sacred geometry mandala
+3. Animated patterns become hypnotic, meditation-worthy visuals
+
+The human brain is wired to find symmetry beautiful and calming — kaleidoscopes exploit this directly.
+
+### Key Math Concepts
+
+1. **Polar Coordinates**
+   
+   Instead of (x, y), we use (angle θ, radius r):
+   ```glsl
+   // Cartesian → Polar
+   float angle = atan(y, x);   // -π to π
+   float radius = length(uv);  // Distance from center
+   
+   // Polar → Cartesian
+   float x = cos(angle) * radius;
+   float y = sin(angle) * radius;
+   ```
+   
+   Why? Because symmetry operations are TRIVIAL in polar:
+   - Rotation = add to angle
+   - Mirror = negate or reflect angle
+   - Radial repetition = modulo on angle
+
+2. **Modular Arithmetic for Repetition**
+   
+   `mod(angle, segmentAngle)` wraps any angle back to the first segment:
+   ```
+   Segments = 6  →  segmentAngle = 60°
+   
+   Input angle 0°   → Output 0°
+   Input angle 45°  → Output 45°
+   Input angle 90°  → Output 30° (90 - 60)
+   Input angle 180° → Output 0°  (180 - 3*60)
+   ```
+   
+   This creates **rotational symmetry** — the same pattern repeated N times.
+
+3. **Mirror Reflection**
+   
+   To get **true kaleidoscope** symmetry (not just rotation), we mirror every other segment:
+   ```glsl
+   // Check if we're in an odd segment (1, 3, 5, ...)
+   float segmentIndex = floor(originalAngle / segmentAngle);
+   bool isOddSegment = mod(segmentIndex, 2.0) >= 1.0;
+   
+   // If odd, flip the angle within the segment
+   if (isOddSegment) {
+       angle = segmentAngle - angle;
+   }
+   ```
+   
+   This creates the characteristic "mirrored triangles" of a real kaleidoscope.
+
+4. **Segment Count Effects**
+   
+   | Segments | Name | Result |
+   |----------|------|--------|
+   | 2 | Bilateral | Mirror image (like a butterfly) |
+   | 3 | Trilateral | Triangular symmetry |
+   | 4 | Quadrilateral | Square symmetry |
+   | 5 | Pentagonal | Star-like patterns |
+   | 6 | Hexagonal | Honeycomb, snowflake patterns |
+   | 8 | Octagonal | Ornate Islamic geometry vibes |
+   | 12+ | Mandala | Complex circular patterns |
+
+### Pattern Ideas to Feed the Kaleidoscope
+
+The kaleidoscope transform works on ANY pattern. Some great inputs:
+
+1. **FBM Noise** — Creates organic, flowing mandalas
+   ```glsl
+   float pattern = fbm(kaleidoscopeUv * scale + time);
+   ```
+
+2. **Voronoi Cells** — Creates crystalline, stained-glass effects
+   ```glsl
+   float pattern = voronoi(kaleidoscopeUv * scale);
+   ```
+
+3. **Concentric Waves** — Creates pulsing, hypnotic circles
+   ```glsl
+   float pattern = sin(length(kaleidoscopeUv) * 10.0 - time);
+   ```
+
+4. **Spirals** — Creates rotating, psychedelic patterns
+   ```glsl
+   float angle = atan(uv.y, uv.x);
+   float pattern = sin(angle * 5.0 + log(length(uv)) * 10.0);
+   ```
+
+5. **Geometric Shapes** — Creates precise, architectural mandalas
+   ```glsl
+   vec2 grid = fract(kaleidoscopeUv * 4.0);
+   float pattern = step(0.5, max(grid.x, grid.y));
+   ```
+
+### Animation Techniques
+
+1. **Rotation** — Spin the whole kaleidoscope:
+   ```glsl
+   uv = mat2(cos(t), -sin(t), sin(t), cos(t)) * uv;
+   ```
+
+2. **Flow** — Move the pattern through the transform:
+   ```glsl
+   float pattern = noise(kaleidoscopeUv + vec2(time, 0.0));
+   ```
+
+3. **Pulsing Zoom** — Breathe in and out:
+   ```glsl
+   uv /= 1.0 + 0.2 * sin(time * 2.0);
+   ```
+
+4. **Segment Morphing** — Smoothly change segment count (advanced):
+   ```glsl
+   float segments = 6.0 + 2.0 * sin(time * 0.3);
+   ```
+
+### Color Strategies
+
+1. **Radial Gradient** — Color based on distance from center
+   ```glsl
+   color = mix(innerColor, outerColor, length(uv));
+   ```
+
+2. **Pattern-based** — Color based on the noise/pattern value
+   ```glsl
+   color = mix(color1, color2, pattern);
+   ```
+
+3. **Rainbow Cycling** — HSV with hue tied to pattern or angle
+   ```glsl
+   vec3 color = hsv2rgb(vec3(pattern * 0.5 + time * 0.1, 1.0, 1.0));
+   ```
+
+4. **Angle-based** — Different colors in different segments
+   ```glsl
+   float hue = angle / TAU;  // Before folding!
+   ```
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Segments | Symmetry type (6 = hexagonal, 8 = octagonal) |
+| Zoom | How much of the pattern is visible |
+| Pattern Scale | Density of detail |
+| Rotation Speed | Mesmerizing spin effect |
+| Distortion | Domain warping for organic feel |
+| Color Cycles | More bands of color |
+
+### Real-World Applications
+
+1. **Music Visualizers** — Audio-reactive kaleidoscopes are classic
+2. **VJ Software** — Real-time visual performance
+3. **Meditation Apps** — Calming, symmetric patterns
+4. **Generative Art** — Unique NFTs, prints
+5. **Game Effects** — Portals, magic, psychic powers
+
+### Historical Context
+
+Real kaleidoscopes were invented by Sir David Brewster in 1816. They use physical mirrors (typically 2-3) to create reflections. Our shader simulates this mathematically, but can create symmetry configurations impossible with physical mirrors (like 7 or 13 segments).
+
+### References
+
+- **Shadertoy - Kaleidoscope Collection**: https://www.shadertoy.com/results?query=kaleidoscope
+- **The Book of Shaders, Chapter 7 (Shapes)**: https://thebookofshaders.com/07/
+- **Polar Coordinates Visualization**: https://www.desmos.com/calculator/polar
+- **Wikipedia - Kaleidoscope**: https://en.wikipedia.org/wiki/Kaleidoscope
+
+---
+
+## Implementation Notes
+
+### Kaleidoscope Shader (kaleidoscope/)
+
+**Uniforms Added:**
+- Symmetry: `uSegments`, `uRotation`, `uRotationSpeed`, `uZoom`
+- Pattern: `uPatternStyle` (0-4), `uPatternScale`, `uDistortion`, `uComplexity`
+- Animation: `uPulse`, `uFlowSpeed`
+- Colors: `uColor1`, `uColor2`, `uColor3`, `uColorCycles`, `uSaturation`, `uBrightness`
+- Effects: `uCenterGlow`, `uEdgeFade`, `uChromatic`
+
+**The 5 Pattern Styles:**
+0. **Noise** — FBM flowing organic patterns
+1. **Voronoi** — Animated crystalline cells
+2. **Waves** — Interfering circular waves
+3. **Spirals** — Logarithmic spiral patterns
+4. **Geometric** — Circles, diamonds, and radial lines
+
+**Performance Notes:**
+- Very lightweight base transform (just atan + mod + sin/cos)
+- Pattern generation is the main cost (FBM: ~5 octaves, Voronoi: 9 cells)
+- Chromatic aberration triples pattern calculations when enabled
+- Easily 60+ FPS for all patterns except chromatic + voronoi combo
+
+**Adaptations:**
+- True mirror symmetry (not just rotational)
+- Optional domain warping for organic distortion
+- Five built-in pattern generators
+- Rainbow color cycling with HSV
+- Center glow and edge vignette for polish
+- Chromatic aberration for extra visual interest
