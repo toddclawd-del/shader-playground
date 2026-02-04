@@ -1233,3 +1233,227 @@ Real kaleidoscopes were invented by Sir David Brewster in 1816. They use physica
 - Rainbow color cycling with HSV
 - Center glow and edge vignette for polish
 - Chromatic aberration for extra visual interest
+
+---
+
+## Moiré Patterns (Added 2026-02-04)
+
+### What It Does
+
+Moiré patterns are **interference patterns** that emerge when two regular, periodic structures are overlaid with slightly different frequencies, orientations, or alignments. The result is large-scale patterns that seem to emerge from nowhere — a visual illusion created by the interaction between the two underlying patterns.
+
+You've seen moiré in everyday life:
+- Silk fabric shimmering as it moves
+- Screen doors photographed on TV
+- Two fences seen through each other
+- Digital photos of monitors or projector screens
+- Security patterns on currency (impossible to photocopy)
+
+### The Core Technique
+
+```glsl
+// MOIRÉ FUNDAMENTALS: Overlay two periodic patterns
+
+// 1. Two sets of concentric circles (radial moiré)
+float pattern1 = sin(length(uv - center1) * frequency1 * TAU);
+float pattern2 = sin(length(uv - center2) * frequency2 * TAU);
+
+// 2. Combine them - that's where the magic happens
+// Multiplication creates moiré interference
+float moire = (0.5 + 0.5 * pattern1) * (0.5 + 0.5 * pattern2);
+
+// 3. For line patterns, use threshold to create stripes
+float lines1 = smoothstep(-width, width, sin(uv.x * freq1));
+float lines2 = smoothstep(-width, width, sin((rot * uv).x * freq2));
+float moire = lines1 * lines2;
+```
+
+The key insight: **the moiré pattern IS NOT in either source pattern**. It emerges purely from their interaction.
+
+### Why It Looks Cool
+
+Moiré creates **emergent complexity** — simple patterns combine to create far more complex results:
+
+1. **Amplifies tiny differences**: Change frequency by 1% → huge change in moiré pattern
+2. **Creates apparent motion**: Slight animation in source → dramatic motion in moiré
+3. **Hypnotic quality**: The brain can't easily parse what it's seeing
+4. **Scale-independent beauty**: Works at any zoom level
+
+### Key Math Concepts
+
+1. **Beat Frequency (The Heart of Moiré)**
+   
+   When two waves of similar frequency interfere:
+   ```
+   f₁ = 20 Hz (pattern 1)
+   f₂ = 21 Hz (pattern 2)
+   
+   f_moiré = |f₁ - f₂| = 1 Hz
+   ```
+   
+   This is why small frequency differences create large moiré patterns! The moiré wavelength is:
+   ```
+   λ_moiré = 1 / |1/λ₁ - 1/λ₂|
+   ```
+   
+   **Example**: Two grids with 10px and 11px spacing create a moiré with 110px wavelength.
+
+2. **Rotation-Based Moiré**
+   
+   When two identical grids are rotated by angle θ:
+   ```
+   λ_moiré = λ / (2 * sin(θ/2))
+   ```
+   
+   At small angles, this simplifies to:
+   ```
+   λ_moiré ≈ λ / θ  (in radians)
+   ```
+   
+   **Example**: Two grids rotated 2° apart create moiré 29× larger than the original grid.
+
+3. **Why Multiplication Creates Moiré**
+   
+   When you multiply two sine waves:
+   ```
+   sin(a) × sin(b) = ½[cos(a-b) - cos(a+b)]
+   ```
+   
+   The `cos(a-b)` term is the low-frequency moiré pattern! The `cos(a+b)` is high-frequency (often invisible at output resolution).
+
+4. **Aliasing Connection**
+   
+   Moiré is related to **aliasing** — when a pattern's frequency exceeds the Nyquist limit (half the sampling rate), it folds back into lower frequencies, creating artifacts. This is why:
+   - Photos of screens show moiré
+   - Herringbone suits flicker on TV
+   - Digital cameras have anti-aliasing filters
+
+### Pattern Types Explained
+
+| Type | Description | Best For |
+|------|-------------|----------|
+| **Radial** | Concentric circles from two centers | Hypnotic pulsing effects |
+| **Linear** | Parallel lines at different angles | Classic fabric shimmer |
+| **Grid** | Two rotated grids | Complex geometric moiré |
+| **Combined** | Circles + lines | Maximum visual complexity |
+| **Spiral** | Twisted radial patterns | Psychedelic rotating effects |
+
+### Creating Different Moiré Effects
+
+1. **Frequency Moiré** (same orientation, different spacing)
+   ```glsl
+   float p1 = sin(uv.x * 20.0);  // 20 cycles
+   float p2 = sin(uv.x * 21.0);  // 21 cycles
+   // Result: 1 large moiré cycle
+   ```
+
+2. **Rotation Moiré** (same frequency, different angle)
+   ```glsl
+   vec2 rot = mat2(c, -s, s, c) * uv;  // Rotate by small angle
+   float p1 = sin(uv.x * 20.0);
+   float p2 = sin(rot.x * 20.0);
+   // Result: diagonal moiré bands
+   ```
+
+3. **Displacement Moiré** (same everything, different position)
+   ```glsl
+   float p1 = sin(length(uv) * 20.0);
+   float p2 = sin(length(uv - offset) * 20.0);
+   // Result: waves radiating from offset direction
+   ```
+
+### Animation Techniques
+
+Moiré patterns are **extremely sensitive to change** — use this!
+
+1. **Slow Rotation** — Tiny rotation changes create dramatic moiré motion:
+   ```glsl
+   float angle = time * 0.01;  // Very slow!
+   ```
+
+2. **Frequency Oscillation** — Modulating frequency creates pulsing:
+   ```glsl
+   float freq = 20.0 + sin(time) * 0.5;  // ±2.5% variation
+   ```
+
+3. **Center Drift** — Moving circle centers for radial moiré:
+   ```glsl
+   vec2 center = vec2(sin(time * 0.3) * 0.1, 0.0);
+   ```
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| Frequency difference | Larger diff = smaller moiré, smaller diff = larger moiré |
+| Rotation angle | Creates diagonal moiré bands |
+| Line width | Thicker lines = softer moiré, thinner = sharper |
+| Animation speed | Slower is usually better — moiré amplifies motion |
+| Pattern type | Completely different visual character |
+| Center offset | For radial: changes moiré flow direction |
+
+### Real-World Applications
+
+1. **Anti-counterfeiting**: Currency and documents use moiré patterns that are impossible to photocopy correctly
+2. **Strain measurement**: Engineering uses moiré to measure tiny deformations
+3. **3D displays**: Some autostereoscopic displays use moiré principles
+4. **Screen printing**: Halftone dots at wrong angles create unwanted moiré
+5. **Optical illusions**: Artists use moiré for kinetic art
+
+### Common Mistakes
+
+1. **Too high frequency** — Pattern becomes noise, not visible moiré
+2. **Too much difference** — Moiré becomes too small to see
+3. **Too fast animation** — Moiré already amplifies motion, slow down!
+4. **Ignoring contrast** — Low contrast makes moiré subtle
+
+### The Psychology of Moiré
+
+Moiré patterns are hypnotic because:
+1. **Ambiguity**: Your brain can't easily separate the patterns
+2. **Scale confusion**: Hard to judge actual distances
+3. **Motion illusion**: Static patterns can appear to move
+4. **Figure-ground reversal**: Which pattern is "in front"?
+
+This makes them perfect for meditation apps, music visualizers, and psychedelic art.
+
+### References
+
+- **Wikipedia - Moiré Pattern**: https://en.wikipedia.org/wiki/Moiré_pattern
+- **Beat Frequency Physics**: https://en.wikipedia.org/wiki/Beat_(acoustics)
+- **Optical Moiré Theory**: https://www.mikroe.com/ebooks/image-processing/aliasing-and-moire-patterns
+- **Shadertoy Examples**: https://www.shadertoy.com/results?query=moire
+
+---
+
+## Implementation Notes
+
+### Moiré Patterns Shader (moire-patterns/)
+
+**Uniforms Added:**
+- Pattern: `uPatternType` (0-4), `uFrequency1`, `uFrequency2`, `uRotation1`, `uRotation2`
+- Structure: `uLineWidth`, `uCenterOffset`
+- Animation: `uAnimSpeed`, `uWaveDistortion`
+- Appearance: `uContrast`, `uColorPhase`
+- Colors: `uColor1`, `uColor2`, `uColor3`, `uBackgroundColor`
+
+**The 5 Pattern Types:**
+0. **Radial** — Concentric circles from two offset centers
+1. **Linear** — Parallel lines at different angles
+2. **Grid** — Two rotated grid patterns
+3. **Combined** — Radial + linear for maximum complexity
+4. **Spiral** — Twisted patterns with animated twist amount
+
+**Performance Notes:**
+- Extremely lightweight — just sin/cos operations
+- No texture lookups, no loops
+- Easily 60+ FPS on any hardware
+- Wave distortion adds minimal cost (2 extra sin calls)
+
+**Adaptations:**
+- Multiple combination modes (multiplicative for sharp, additive for glow)
+- Wave distortion for organic flow
+- Three-color gradient with animated phase
+- Contrast curve for controlling moiré visibility
+- Animated rotation and twist parameters
+- Vignette for polish
