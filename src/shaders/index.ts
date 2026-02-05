@@ -29,6 +29,7 @@ import { thinFilmConfig } from './thin-film/config'
 import { causticsConfig } from './caustics/config'
 import { kaleidoscopeConfig } from './kaleidoscope/config'
 import { moirePatternsConfig } from './moire-patterns/config'
+import { supershapeConfig } from './supershape/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -63,6 +64,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   caustics: causticsConfig,
   kaleidoscope: kaleidoscopeConfig,
   'moire-patterns': moirePatternsConfig,
+  supershape: supershapeConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({

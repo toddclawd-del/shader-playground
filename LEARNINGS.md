@@ -1457,3 +1457,226 @@ This makes them perfect for meditation apps, music visualizers, and psychedelic 
 - Contrast curve for controlling moiré visibility
 - Animated rotation and twist parameters
 - Vignette for polish
+
+---
+
+## Supershape / Superformula (Added 2026-02-05)
+
+### What It Does
+
+The Superformula, invented by Belgian mathematician Johan Gielis in 2003, is a single equation that can generate an astonishing variety of 2D shapes: circles, stars, flowers, polygons, leaves, organic blobs — essentially every natural form from a single formula.
+
+The equation in polar coordinates:
+
+```
+r(φ) = ( |cos(mφ/4)/a|^n2 + |sin(mφ/4)/b|^n3 )^(-1/n1)
+```
+
+Where:
+- **m** — rotational symmetry (how many lobes/points)
+- **n1** — overall "inflation" (how round vs pointy)
+- **n2, n3** — shape of each lobe (cos and sin exponents)
+- **a, b** — scaling on the cos/sin terms (usually 1.0)
+
+### The Core Technique
+
+```glsl
+// THE SUPERFORMULA — 6 parameters, infinite shapes
+float superformula(float phi, float m, float n1, float n2, float n3, float a, float b) {
+    // Split the angle into cos and sin components
+    float t1 = abs(cos(m * phi * 0.25) / a);
+    t1 = pow(t1, n2);   // Shape the cos term
+
+    float t2 = abs(sin(m * phi * 0.25) / b);
+    t2 = pow(t2, n3);   // Shape the sin term
+
+    // The negative reciprocal power is the key:
+    // It inverts the sum, creating a finite bounded shape
+    return pow(t1 + t2, -1.0 / n1);
+}
+
+// To render: compare pixel distance to shape radius
+float angle = atan(uv.y, uv.x);
+float radius = length(uv);
+float shapeR = superformula(angle, m, n1, n2, n3, a, b) * scale;
+float sdf = radius - shapeRadius;  // Negative inside, positive outside
+```
+
+### Why It Looks Cool
+
+The Superformula is a **universal shape generator**. One equation, smoothly parameterized, creates shapes that would normally require completely different mathematical descriptions:
+
+1. **Continuous morphing** — Smoothly interpolate parameters to transform a star into a flower into a polygon
+2. **Natural forms** — Gielis designed it specifically to model natural shapes (his book: "The Geometrical Beauty of Plants")
+3. **Emergent complexity** — Simple parameter changes create wildly different topologies
+4. **Self-similarity** — Many parameter combos create forms that resemble biological structures
+
+### Key Math Concepts
+
+1. **Polar Coordinates for Shape Definition**
+
+   The superformula defines shapes in polar coordinates (angle, radius). For each angle φ, it returns a radius r(φ). This is natural for closed curves because:
+   - You sweep 0 → 2π to trace the full shape
+   - The shape is automatically closed (2π meets 0)
+   - Symmetry is built into the `cos(mφ/4)` term
+
+2. **The m Parameter (Rotational Symmetry)**
+
+   The `m` in `cos(mφ/4)` and `sin(mφ/4)` creates m-fold symmetry:
+   ```
+   m = 0 → circle (no angular variation)
+   m = 3 → 3-fold symmetry (triangular)
+   m = 4 → 4-fold symmetry (square/diamond)
+   m = 5 → 5-fold symmetry (pentagon/star)
+   m = 6 → 6-fold symmetry (hexagonal)
+   ```
+
+   The `/4` factor means the full shape repeats every `2π/m` radians.
+   Non-integer m creates asymmetric, organic forms.
+
+3. **The n Parameters (Shape Character)**
+
+   | n1, n2, n3 | Shape Result |
+   |------------|-------------|
+   | All equal, < 1 | Pointy stars (arms get thinner) |
+   | All equal, = 1 | Rounded flowers |
+   | n1 very large, n2=n3 large | Polygons (sharp corners) |
+   | n1 small, n2≠n3 | Asymmetric organic forms |
+   | n1 moderate, n2=n3 moderate | Smooth botanical shapes |
+
+   **n1** is the "inflation" control:
+   - Small n1 (< 1) → deflated, pointy
+   - Large n1 (> 10) → inflated, rounded toward polygon
+   - `pow(sum, -1/n1)` means larger n1 → less sensitivity to the sum
+
+4. **SDF-Based Rendering**
+
+   Instead of tracing the curve, we use a **Signed Distance Field** (SDF):
+   ```glsl
+   float sdf = radius - shapeRadius;
+   // sdf < 0: inside the shape
+   // sdf > 0: outside the shape
+   // sdf ≈ 0: on the boundary
+   ```
+
+   This enables:
+   - **Crisp outlines**: `smoothstep(width+aa, width-aa, abs(sdf))`
+   - **Glowing edges**: `exp(-abs(sdf) * falloff)`
+   - **Filled shapes**: `smoothstep(aa, -aa, sdf)`
+   - **Contour lines**: `sin(sdf * frequency)`
+   - **Anti-aliasing**: `fwidth(sdf)` for screen-space pixel size
+
+5. **Smooth Morphing Between Shapes**
+
+   Because the formula is continuous in all parameters, you can **lerp between any two shapes**:
+   ```glsl
+   vec4 paramsA = vec4(5.0, 0.3, 0.3, 0.3);   // Star
+   vec4 paramsB = vec4(4.0, 12.0, 15.0, 15.0); // Rounded square
+   vec4 current = mix(paramsA, paramsB, blend);  // Smooth morph!
+   ```
+
+   Use `smoothstep` easing on the blend factor for natural-feeling transitions:
+   ```glsl
+   blend = blend * blend * (3.0 - 2.0 * blend);  // Hermite interpolation
+   ```
+
+### Famous Supershape Parameter Sets
+
+| Shape | m | n1 | n2 | n3 | Notes |
+|-------|---|----|----|-----|-------|
+| Circle | 0 | 1 | 1 | 1 | Baseline — no angular variation |
+| Starfish | 5 | 0.3 | 0.3 | 0.3 | Thin pointy arms |
+| Organic Blob | 3 | 5 | 18 | 18 | Smooth amoeba shape |
+| Rounded Square | 4 | 12 | 15 | 15 | Polygon with soft corners |
+| Five Petals | 5 | 1 | 1.7 | 1.7 | Botanical flower |
+| Compass Rose | 8 | 0.5 | 0.5 | 0.5 | Eight-pointed star |
+| Trefoil | 3 | 0.5 | 1 | 1 | Three-lobed clover |
+
+### Glow/Bloom Rendering Technique
+
+The neon glow effect uses **multi-layered exponential falloff**:
+
+```glsl
+// Tight inner glow (sharp edge halo)
+float glow1 = exp(-abs(sdf) * 10.0);
+
+// Wide outer bloom (atmospheric spread)
+float glow2 = exp(-abs(sdf) * 4.0) * 0.4;
+
+// Combined: tight core + soft halo = convincing neon
+color += shapeColor * (glow1 + glow2) * intensity;
+```
+
+The `exp(-x * k)` function creates a natural, physically-inspired falloff. Stacking two at different rates creates the "tight bright core + soft wide halo" characteristic of real neon/plasma.
+
+### How to Modify
+
+| Change This | Effect |
+|-------------|--------|
+| m | Number of symmetry points (3=triangle, 5=star, 8=octagonal) |
+| n1 | Inflation — small = pointy, large = rounded polygon |
+| n2, n3 | Lobe shape — equal = symmetric, different = organic |
+| a ≠ b | Stretch shape in cos vs sin directions |
+| Scale | Overall size |
+| Breathe | Gentle parameter oscillation for organic feel |
+| Morph Speed | How fast presets cycle (in Mode 3) |
+| Layers | Overlapping shapes at different rotations (Mode 4) |
+
+### Why the Superformula Matters
+
+1. **Universal Shape Language** — One equation describes a huge family of natural forms. This is rare and powerful.
+2. **Parametric Design** — Every shape is smoothly connected to every other shape through parameter space. Perfect for animation and generative art.
+3. **SDF Rendering** — Demonstrates the full power of signed distance fields for 2D rendering (outlines, glows, fills, contours).
+4. **Polar Coordinate Mastery** — Forces you to think in (angle, radius) instead of (x, y) — a fundamental skill for procedural graphics.
+5. **Real-World Use** — Gielis' formula has applications in biology (modeling plant forms), architecture, antenna design, and 3D printing.
+
+### Historical Context
+
+Johan Gielis published the superformula in the *American Journal of Botany* in 2003. It extends the **superellipse** (which generates circles, ellipses, and rectangles) into a much larger family of shapes. The superellipse was popularized by Piet Hein in the 1960s for furniture design — the superformula takes that idea to its logical extreme.
+
+### References
+
+- **Paul Bourke's Gallery**: https://paulbourke.net/geometry/supershape/ (excellent parameter exploration)
+- **Original Paper**: Gielis, J. "A generic geometric transformation that unifies a wide range of natural and abstract shapes" (American Journal of Botany, 2003)
+- **Shadertoy Example**: https://www.shadertoy.com/view/MsyfzV
+- **Wikipedia**: https://en.wikipedia.org/wiki/Superformula
+- **Daniel Shiffman's Coding Train**: https://www.youtube.com/watch?v=ksRoh-10lak (Supershapes in Processing)
+
+---
+
+## Implementation Notes
+
+### Supershape Shader (supershape/)
+
+**Uniforms Added:**
+- Formula: `uM`, `uN1`, `uN2`, `uN3`, `uA`, `uB` (the 6 superformula parameters)
+- Rendering: `uVisualization` (0-4), `uScale`, `uLineWidth`, `uGlow`
+- Animation: `uAnimSpeed`, `uRotationSpeed`, `uAutoMorph`, `uMorphSpeed`, `uBreathe`
+- Colors: `uColor1`, `uColor2`, `uColor3`, `uBackgroundColor`
+- Layers: `uLayers`, `uLayerSpread`
+
+**The 5 Visualization Modes:**
+0. **Neon Glow** — Dual-layer exponential bloom on dark background
+1. **SDF Contours** — Topographic contour lines of the distance field
+2. **Filled Gradient** — Solid fill with angle+radius color mapping
+3. **Morph Gallery** — Auto-cycles through 8 preset shapes with rainbow
+4. **Layered Bloom** — Multiple overlapping shapes at different rotations
+
+**8 Morph Presets:**
+Starfish → Organic Blob → Hex Flower → Rounded Square → Five Petals → Compass Rose → Trefoil → Seven-Petal Daisy (loops)
+
+**Performance Notes:**
+- Superformula evaluation: just cos, sin, abs, pow — very fast
+- Mode 0: ~4 operations per pixel (formula + glow) → 60+ FPS
+- Mode 4 with 5 layers: 5× formula evaluations → still 60+ FPS
+- fwidth-based anti-aliasing: no extra cost, automatic screen-space adaptation
+- The `pow()` calls are the "expensive" part, but GPUs handle these well
+
+**Adaptations:**
+- SDF-based rendering for all 5 modes (not curve tracing)
+- fwidth() anti-aliasing for resolution-independent edges
+- Dual-layer exponential glow (tight + wide) for convincing neon
+- "Breathe" parameter for organic oscillation without full morph
+- Hermite-interpolated preset morphing for smooth transitions
+- Subtle noise background + radial gradient for depth
+- Per-layer hue shifting in layered mode
