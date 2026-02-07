@@ -31,6 +31,7 @@ import { kaleidoscopeConfig } from './kaleidoscope/config'
 import { moirePatternsConfig } from './moire-patterns/config'
 import { supershapeConfig } from './supershape/config'
 import { plasmaConfig } from './plasma/config'
+import { oceanConfig } from './ocean/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -67,6 +68,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   'moire-patterns': moirePatternsConfig,
   supershape: supershapeConfig,
   plasma: plasmaConfig,
+  ocean: oceanConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
