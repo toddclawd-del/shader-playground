@@ -33,6 +33,7 @@ import { supershapeConfig } from './supershape/config'
 import { plasmaConfig } from './plasma/config'
 import { oceanConfig } from './ocean/config'
 import { hyperspaceTunnelConfig } from './hyperspace-tunnel/config'
+import { metaballsConfig } from './metaballs/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -71,6 +72,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   plasma: plasmaConfig,
   ocean: oceanConfig,
   'hyperspace-tunnel': hyperspaceTunnelConfig,
+  metaballs: metaballsConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
