@@ -30,7 +30,7 @@ export const metaballsConfig: ShaderConfig = {
     uBorderGlow: { value: 0.8, min: 0.0, max: 1.5, step: 0.05, type: 'float', label: 'Border Intensity' },
     
     // Colors
-    uColorMode: { value: 1, min: 0, max: 5, step: 1, type: 'int', label: 'Palette (0=Custom, 1=Lava, 2=Plasma, 3=Ocean, 4=Neon, 5=Mono)' },
+    uColorMode: { value: 1, min: 0, max: 5, step: 1, type: 'float', label: 'Palette (0=Custom, 1=Lava, 2=Plasma, 3=Ocean, 4=Neon, 5=Mono)' },
     uColor1: { value: '#ff3366', type: 'color', label: 'Custom Color 1' },
     uColor2: { value: '#33ffcc', type: 'color', label: 'Custom Color 2' },
     uColor3: { value: '#ffcc33', type: 'color', label: 'Custom Color 3' },

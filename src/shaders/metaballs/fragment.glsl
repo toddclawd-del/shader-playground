@@ -11,7 +11,7 @@ uniform float uSmooth;
 uniform float uGlow;
 uniform float uOrganic;
 uniform float uPulse;
-uniform int uColorMode;
+uniform float uColorMode;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
@@ -107,10 +107,11 @@ float metaballField(vec2 p) {
 vec3 getColor(float t, float field) {
   t = clamp(t, 0.0, 1.0);
   
-  if (uColorMode == 0) {
+  int mode = int(uColorMode);
+  if (mode == 0) {
     // Custom gradient
     return mix(uColor1, uColor2, t);
-  } else if (uColorMode == 1) {
+  } else if (mode == 1) {
     // Lava lamp (warm organics)
     vec3 a = vec3(0.9, 0.2, 0.1);
     vec3 b = vec3(1.0, 0.6, 0.1);
@@ -118,13 +119,13 @@ vec3 getColor(float t, float field) {
     float t2 = t * 2.0;
     if (t2 < 1.0) return mix(a, b, t2);
     return mix(b, c, t2 - 1.0);
-  } else if (uColorMode == 2) {
+  } else if (mode == 2) {
     // Plasma (psychedelic)
     vec3 a = vec3(0.2, 0.0, 0.4);
     vec3 b = vec3(0.9, 0.1, 0.5);
     vec3 c = vec3(0.1, 0.9, 0.9);
     return mix(mix(a, b, t), c, sin(t * PI) * 0.5 + 0.5);
-  } else if (uColorMode == 3) {
+  } else if (mode == 3) {
     // Ocean
     vec3 deep = vec3(0.0, 0.1, 0.3);
     vec3 mid = vec3(0.0, 0.4, 0.6);
@@ -132,7 +133,7 @@ vec3 getColor(float t, float field) {
     float t2 = t * 2.0;
     if (t2 < 1.0) return mix(deep, mid, t2);
     return mix(mid, surface, t2 - 1.0);
-  } else if (uColorMode == 4) {
+  } else if (mode == 4) {
     // Neon
     vec3 a = vec3(1.0, 0.0, 0.5);
     vec3 b = vec3(0.0, 1.0, 1.0);
