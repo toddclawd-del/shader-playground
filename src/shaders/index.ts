@@ -36,6 +36,7 @@ import { hyperspaceTunnelConfig } from './hyperspace-tunnel/config'
 import { metaballsConfig } from './metaballs/config'
 import { gravitationalLensingConfig } from './gravitational-lensing/config'
 import { volumetricCloudsConfig } from './volumetric-clouds/config'
+import { fireConfig } from './fire/config'
 import type { ShaderConfig } from '../stores/shaderStore'
 
 export const shaderRegistry: Record<string, ShaderConfig> = {
@@ -77,6 +78,7 @@ export const shaderRegistry: Record<string, ShaderConfig> = {
   metaballs: metaballsConfig,
   'gravitational-lensing': gravitationalLensingConfig,
   'volumetric-clouds': volumetricCloudsConfig,
+  fire: fireConfig,
 }
 
 export const shaderList = Object.entries(shaderRegistry).map(([id, config]) => ({
